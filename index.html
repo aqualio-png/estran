@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#081821">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Estran - marées, surf &amp; pêche du bord</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --deep:#081821; --panel:#0E2330; --panel2:#12303F; --line:#1C3E4E;
+  --foam:#EAF4F4; --mist:#89A9B6; --sand:#E4D5B4;
+  --surf:#49C6D6; --peche:#E7A94E; --bad:#E06C5B;
+  --rad:16px;
+}
+*{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{
+  background:var(--deep); color:var(--foam);
+  font-family:"Instrument Sans",system-ui,sans-serif;
+  font-size:15px; line-height:1.45;
+  min-height:100vh;
+  padding-bottom:calc(24px + env(safe-area-inset-bottom));
+}
+.wrap{max-width:520px; margin:0 auto; padding:0 14px}
+/* ---------- header ---------- */
+header{
+  padding:calc(14px + env(safe-area-inset-top)) 0 10px;
+  display:flex; align-items:flex-end; justify-content:space-between; gap:10px;
+}
+.brand h1{
+  font-family:"Bricolage Grotesque",sans-serif; font-weight:800;
+  font-size:26px; letter-spacing:.06em; line-height:1;
+}
+.brand h1 span{color:var(--surf)}
+.brand p{color:var(--mist); font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; margin-top:3px}
+.locbar{display:flex; gap:8px; align-items:center; margin:6px 0 14px}
+.locpill{
+  flex:1; display:flex; align-items:center; gap:8px;
+  background:var(--panel); border:1px solid var(--line); border-radius:999px;
+  padding:9px 14px; color:var(--foam); font-size:14px; min-width:0; cursor:pointer;
+}
+.locpill .name{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600}
+.locpill .dot{width:8px; height:8px; border-radius:50%; background:var(--surf); flex:none; box-shadow:0 0 8px var(--surf)}
+.iconbtn{
+  flex:none; width:42px; height:42px; border-radius:50%;
+  background:var(--panel2); border:1px solid var(--line); color:var(--foam);
+  font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.iconbtn:active{transform:scale(.94)}
+/* ---------- day tabs ---------- */
+.tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:12px; scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  flex:none; padding:7px 13px; border-radius:999px; border:1px solid var(--line);
+  background:var(--panel); color:var(--mist); font-size:13px; font-weight:600; cursor:pointer;
+}
+.tab.on{background:var(--sand); color:var(--deep); border-color:var(--sand)}
+/* ---------- hero curve ---------- */
+.hero{
+  background:linear-gradient(180deg,var(--panel2),var(--panel));
+  border:1px solid var(--line); border-radius:var(--rad);
+  padding:14px 12px 10px; margin-bottom:12px; position:relative; overflow:hidden;
+}
+.hero .top{display:flex; justify-content:space-between; align-items:flex-start; padding:0 4px}
+.nexttide .lbl{color:var(--mist); font-size:11px; letter-spacing:.12em; text-transform:uppercase}
+.nexttide .big{font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:21px; margin-top:2px}
+.nexttide .sub{color:var(--mist); font-size:12.5px; font-family:"Spline Sans Mono",monospace}
+.coefbox{text-align:right}
+.coefbox .lbl{color:var(--mist); font-size:11px; letter-spacing:.12em; text-transform:uppercase}
+.coefbox .num{
+  font-family:"Bricolage Grotesque",sans-serif; font-weight:800; font-size:44px; line-height:1;
+  color:var(--sand);
+}
+.coefbox .tag{font-size:11px; color:var(--mist)}
+svg.curve{display:block; width:100%; height:auto; margin-top:6px}
+.tracks{padding:2px 4px 0}
+.trk{display:flex; align-items:center; gap:8px; margin-top:7px}
+.trk .tl{flex:none; width:44px; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--mist); font-weight:600}
+.trk .bar{flex:1; height:8px; border-radius:4px; background:rgba(255,255,255,.05); position:relative; overflow:hidden}
+.trk .seg{position:absolute; top:0; bottom:0; border-radius:4px}
+.trk.surf .seg{background:var(--surf)}
+.trk.peche .seg{background:var(--peche)}
+.hscale{display:flex; justify-content:space-between; color:var(--mist); font-size:9.5px; font-family:"Spline Sans Mono",monospace; padding:4px 4px 0}
+/* ---------- cards ---------- */
+.card{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--rad);
+  padding:14px; margin-bottom:12px;
+}
+.card h2{
+  font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:15px;
+  letter-spacing:.02em; margin-bottom:10px; display:flex; align-items:center; gap:8px;
+}
+.card h2 .sw{width:10px; height:10px; border-radius:3px; flex:none}
+/* windows */
+.winrow{display:flex; flex-wrap:wrap; gap:8px}
+.chip{
+  display:inline-flex; align-items:center; gap:7px;
+  border-radius:10px; padding:7px 11px; font-family:"Spline Sans Mono",monospace;
+  font-size:13px; font-weight:500; border:1px solid transparent;
+}
+.chip.surf{background:rgba(73,198,214,.12); border-color:rgba(73,198,214,.35); color:var(--surf)}
+.chip.peche{background:rgba(231,169,78,.12); border-color:rgba(231,169,78,.35); color:var(--peche)}
+.chip .st{font-size:11px; letter-spacing:.1em}
+.nowin{color:var(--mist); font-size:13px}
+/* tide table */
+table.tides{width:100%; border-collapse:collapse}
+table.tides td{padding:9px 4px; border-top:1px solid var(--line); vertical-align:middle}
+table.tides tr:first-child td{border-top:none}
+.badge{
+  display:inline-block; text-align:center; padding:4px 9px; border-radius:8px;
+  font-family:"Bricolage Grotesque",sans-serif; font-weight:700; font-size:11px; white-space:nowrap;
+}
+.badge.pm{background:var(--sand); color:var(--deep)}
+.badge.bm{background:var(--panel2); color:var(--mist); border:1px solid var(--line)}
+.t-time{font-family:"Spline Sans Mono",monospace; font-size:17px; font-weight:600}
+.t-h{font-family:"Spline Sans Mono",monospace; font-size:13px; color:var(--mist); text-align:right}
+.t-c{text-align:right; font-family:"Bricolage Grotesque",sans-serif; font-weight:800; font-size:19px; color:var(--sand)}
+.t-c small{font-size:10px; color:var(--mist); font-weight:400; display:block; letter-spacing:.08em}
+/* conditions grid */
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
+.cond{
+  background:var(--panel2); border:1px solid var(--line); border-radius:12px;
+  padding:10px 8px; text-align:center;
+}
+.cond .v{font-family:"Spline Sans Mono",monospace; font-weight:600; font-size:16px}
+.cond .u{color:var(--mist); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; margin-top:2px}
+.cond .d{font-size:12px; color:var(--sand); margin-top:2px}
+.trk.drone .seg{background:#A78BFA}
+.chip.drone{background:rgba(167,139,250,.12); border-color:rgba(167,139,250,.35); color:#A78BFA}
+/* zone drone */
+.zstat{font-size:14px; line-height:1.5; margin-bottom:10px}
+.zstat .ok{color:#7BD88F; font-weight:700}
+.zstat .warn{color:var(--peche); font-weight:700}
+.zstat .no{color:var(--bad); font-weight:800}
+.linkbtn{
+  display:block; text-align:center; background:var(--sand); color:var(--deep);
+  border-radius:12px; padding:11px 14px; font-weight:700; font-size:14px;
+  text-decoration:none; margin-bottom:9px;
+}
+.zhint{color:var(--mist); font-size:11.5px; line-height:1.5}
+/* states */
+#loading,#err{padding:60px 20px; text-align:center; color:var(--mist)}
+#loading .wv{font-size:34px; animation:bob 1.6s ease-in-out infinite; display:inline-block}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+#err button, .cta{
+  margin-top:14px; background:var(--surf); color:var(--deep); border:none;
+  border-radius:999px; padding:11px 22px; font-weight:700; font-size:14px; cursor:pointer;
+}
+.ghost{background:transparent; border:1px solid var(--line); color:var(--foam); border-radius:999px; padding:10px 20px; font-weight:600; font-size:14px; cursor:pointer; margin-top:10px}
+/* search modal */
+#modal{
+  position:fixed; inset:0; background:rgba(4,12,17,.82); backdrop-filter:blur(4px);
+  display:none; align-items:flex-start; justify-content:center; z-index:50; padding:60px 16px 20px;
+}
+#modal.open{display:flex}
+.mbox{background:var(--panel); border:1px solid var(--line); border-radius:var(--rad); width:100%; max-width:440px; padding:16px}
+.mbox input{
+  width:100%; background:var(--deep); border:1px solid var(--line); border-radius:10px;
+  padding:11px 14px; color:var(--foam); font-size:15px; font-family:inherit; outline:none;
+}
+.mbox input:focus{border-color:var(--surf)}
+#results{margin-top:10px; max-height:45vh; overflow-y:auto}
+.rline{padding:10px 6px; border-top:1px solid var(--line); cursor:pointer; font-size:14px}
+.rline small{color:var(--mist); display:block}
+footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
+.toast{
+  position:fixed; left:50%; bottom:26px; transform:translateX(-50%);
+  background:var(--sand); color:var(--deep); font-weight:600; font-size:13px;
+  padding:10px 18px; border-radius:14px; z-index:60; opacity:0; transition:opacity .25s;
+  pointer-events:none; white-space:normal; max-width:92vw; width:max-content; text-align:center; line-height:1.4;
+}
+.toast.show{opacity:1}
+/* vent en direct (drone) */
+.dnow{
+  display:flex; align-items:center; flex-wrap:wrap; gap:6px 12px;
+  background:var(--panel2); border:1px solid var(--line); border-radius:12px;
+  padding:10px 12px; margin-bottom:11px;
+}
+.dnow .wnum{font-family:"Bricolage Grotesque",sans-serif; font-weight:800; font-size:24px}
+.dnow .wnum.ok{color:#7BD88F}
+.dnow .wnum.warn{color:var(--peche)}
+.dnow .wnum.no{color:var(--bad)}
+.dnow .wdet{color:var(--mist); font-size:12.5px; font-family:"Spline Sans Mono",monospace}
+.dnow .wverdict{margin-left:auto; font-weight:700; font-size:13px}
+.dnow .wverdict.ok{color:#7BD88F}
+.dnow .wverdict.warn{color:var(--peche)}
+.dnow .wverdict.no{color:var(--bad)}
+.dnow .wts{flex-basis:100%; color:var(--mist); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>ESTR<span>AN</span></h1>
+      <p>marées · surf · pêche du bord</p>
+    </div>
+  </header>
+
+  <div class="locbar">
+    <div class="locpill" id="locPill" title="Changer de spot">
+      <span class="dot"></span><span class="name" id="locName">Localisation…</span>
+    </div>
+    <button class="iconbtn" id="btnGps" title="Ma position GPS">◎</button>
+    <button class="iconbtn" id="btnRefresh" title="Actualiser">↻</button>
+  </div>
+
+  <div id="loading"><span class="wv">🌊</span><br>Recherche de la position et des marées…</div>
+
+  <div id="err" style="display:none">
+    <p id="errMsg">Position indisponible.</p>
+    <button id="btnRetry">Réessayer le GPS</button><br>
+    <button class="ghost" id="btnManual">Chercher un spot manuellement</button>
+  </div>
+
+  <div id="app" style="display:none">
+    <div class="tabs" id="tabs"></div>
+
+    <section class="hero">
+      <div class="top">
+        <div class="nexttide">
+          <div class="lbl" id="ntLbl">Prochaine marée</div>
+          <div class="big" id="ntBig">—</div>
+          <div class="sub" id="ntSub"></div>
+        </div>
+        <div class="coefbox">
+          <div class="lbl">Coef. estimé</div>
+          <div class="num" id="coefNum">—</div>
+          <div class="tag" id="coefTag"></div>
+        </div>
+      </div>
+      <svg class="curve" id="svgCurve" viewBox="0 0 360 132" preserveAspectRatio="none" aria-label="Courbe de marée"></svg>
+      <div class="tracks">
+        <div class="trk surf"><span class="tl">Surf</span><div class="bar" id="barSurf"></div></div>
+        <div class="trk peche"><span class="tl">Pêche</span><div class="bar" id="barPeche"></div></div>
+        <div class="trk drone"><span class="tl">Drone</span><div class="bar" id="barDrone"></div></div>
+        <div class="hscale"><span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>24h</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2><span class="sw" style="background:var(--surf)"></span>Fenêtres surf</h2>
+      <div class="winrow" id="winSurf"></div>
+    </section>
+
+    <section class="card">
+      <h2><span class="sw" style="background:var(--peche)"></span>Fenêtres pêche du bord</h2>
+      <div class="winrow" id="winPeche"></div>
+    </section>
+
+    <section class="card">
+      <h2><span class="sw" style="background:#A78BFA"></span>Fenêtres vol drone</h2>
+      <div class="dnow" id="droneNow" style="display:none"></div>
+      <div class="winrow" id="winDrone"></div>
+    </section>
+
+    <section class="card">
+      <h2><span class="sw" style="background:#A78BFA"></span>Drone — zone &amp; autorisations</h2>
+      <div id="droneZone"><div class="zstat">En attente de position…</div></div>
+    </section>
+
+    <section class="card">
+      <h2><span class="sw" style="background:var(--sand)"></span>Marées du jour</h2>
+      <table class="tides"><tbody id="tideRows"></tbody></table>
+    </section>
+
+    <section class="card">
+      <h2><span class="sw" style="background:var(--mist)"></span>Conditions</h2>
+      <div class="grid3" id="condGrid"></div>
+    </section>
+
+    <footer>
+      Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km).
+      Coefficients <b>estimés</b> à partir du marnage local — valeurs officielles : SHOM / annuaire des marées.
+      Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
+      Heures locales du spot, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+    </footer>
+  </div>
+</div>
+
+<div id="modal">
+  <div class="mbox">
+    <input id="q" type="search" placeholder="Ville, plage, port… (ex : Lacanau)" autocomplete="off">
+    <div id="results"></div>
+    <button class="ghost" id="btnClose" style="width:100%">Fermer</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s);};
+var CACHE_KEY="estran_v1";
+var M=null, W=null, EXT=[], TODAY=0, DAY=0, SURF=[], FISH=[], DRONE=[];
+var state={la:null, lo:null, label:""};
+
+/* ==================== PURE ==================== */
+function parseLocal(s){
+  var m=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(s);
+  if(m){return new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5]);}
+  return new Date(s);
+}
+function pad2(n){return (n<10?"0":"")+n;}
+function fmtHM(d){return pad2(d.getHours())+"h"+pad2(d.getMinutes());}
+function fmtDur(ms){var m=Math.round(ms/60000);var h=Math.floor(m/60);m=m-h*60;return h>0?(h+" h "+pad2(m)):(m+" min");}
+function frNum(x,d){return x.toLocaleString("fr-FR",{minimumFractionDigits:d,maximumFractionDigits:d});}
+function angDiff(a,b){var d=Math.abs(a-b)%360;return d>180?360-d:d;}
+function compass(deg){var p=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSO","SO","OSO","O","ONO","NO","NNO"];return p[Math.round(deg/22.5)%16];}
+function clamp(x,a,b){return Math.max(a,Math.min(b,x));}
+function isoDate(d){return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());}
+
+function computeExtrema(times,levels){
+  var ext=[];
+  for(var i=1;i<levels.length-1;i++){
+    var y0=levels[i-1],y1=levels[i],y2=levels[i+1];
+    if(y0==null||y1==null||y2==null)continue;
+    var isMax=(y1>=y0&&y1>y2), isMin=(y1<=y0&&y1<y2);
+    if(!isMax&&!isMin)continue;
+    var a=(y0+y2)/2-y1, b=(y2-y0)/2, dx=0, yv=y1;
+    if(Math.abs(a)>1e-9){dx=clamp(-b/(2*a),-1,1);yv=y1+b*dx+a*dx*dx;}
+    ext.push({t:new Date(parseLocal(times[i]).getTime()+dx*3600000),h:yv,type:(isMax?"PM":"BM")});
+  }
+  var out=[];
+  for(var k=0;k<ext.length;k++){
+    var e=ext[k], last=out[out.length-1];
+    if(last&&last.type===e.type&&(e.t-last.t)<3*3600000){
+      if((e.type==="PM"&&e.h>last.h)||(e.type==="BM"&&e.h<last.h))out[out.length-1]=e;
+    }else out.push(e);
+  }
+  return out;
+}
+
+function attachCoefs(ext){
+  var semis=[];
+  for(var i=0;i<ext.length;i++){
+    if(ext[i].type!=="PM")continue;
+    var s=0,n=0;
+    if(i>0&&ext[i-1].type==="BM"){s+=ext[i].h-ext[i-1].h;n++;}
+    if(i<ext.length-1&&ext[i+1].type==="BM"){s+=ext[i].h-ext[i+1].h;n++;}
+    if(n>0){ext[i].semi=(s/n)/2;semis.push(ext[i].semi);}
+  }
+  if(!semis.length)return 1;
+  var mean=semis.reduce(function(a,b){return a+b;},0)/semis.length;
+  if(mean<=0)return 1;
+  for(var j=0;j<ext.length;j++){
+    if(ext[j].semi!=null)ext[j].coef=clamp(Math.round(70*ext[j].semi/mean),20,120);
+  }
+  return mean;
+}
+
+function smoothPath(pts){
+  if(pts.length<2)return "";
+  var p="M"+pts[0][0].toFixed(1)+","+pts[0][1].toFixed(1);
+  for(var i=0;i<pts.length-1;i++){
+    var p0=pts[Math.max(0,i-1)],p1=pts[i],p2=pts[i+1],p3=pts[Math.min(pts.length-1,i+2)];
+    var c1x=p1[0]+(p2[0]-p0[0])/6, c1y=p1[1]+(p2[1]-p0[1])/6;
+    var c2x=p2[0]-(p3[0]-p1[0])/6, c2y=p2[1]-(p3[1]-p1[1])/6;
+    p+="C"+c1x.toFixed(1)+","+c1y.toFixed(1)+" "+c2x.toFixed(1)+","+c2y.toFixed(1)+" "+p2[0].toFixed(1)+","+p2[1].toFixed(1);
+  }
+  return p;
+}
+function droneFactors(ws,wg,pr,prob){
+  var fW=ws==null?0.9:ws<12?1:ws<20?0.85:ws<28?0.55:ws<38?0.25:0.05;
+  var fG=wg==null?1:wg<25?1:wg<35?0.8:wg<45?0.45:0.15;
+  var fR=1;
+  if(pr!=null&&pr>0.1)fR=0.08;
+  else if(prob!=null){fR=prob>=60?0.45:prob>=30?0.8:1;}
+  return fW*fG*fR;
+}
+function probeCandidates(la,lo){
+  var c=[[la,lo]];
+  [0.08,0.16,0.25].forEach(function(d){
+    c.push([la,lo-d],[la,lo+d],[la-d,lo],[la+d,lo],[la-d,lo-d],[la-d,lo+d],[la+d,lo-d],[la+d,lo+d]);
+  });
+  return c;
+}
+/* ==================== /PURE ==================== */
+
+function toast(msg){
+  var t=$("#toast");t.textContent=msg;t.classList.add("show");
+  setTimeout(function(){t.classList.remove("show");},2600);
+}
+function show(id){
+  ["#loading","#err","#app"].forEach(function(s){$(s).style.display=(s===id?"block":"none");});
+}
+
+/* ---------- data helpers ---------- */
+function phaseAt(t){
+  for(var i=0;i<EXT.length-1;i++){
+    if(t>=EXT[i].t&&t<EXT[i+1].t){
+      var span=EXT[i+1].t-EXT[i].t;
+      return {p:span>0?(t-EXT[i].t)/span:0, rising:EXT[i+1].type==="PM", prev:EXT[i], next:EXT[i+1]};
+    }
+  }
+  return null;
+}
+function coefAt(t){
+  var best=null,bd=Infinity;
+  for(var i=0;i<EXT.length;i++){
+    if(EXT[i].type!=="PM"||EXT[i].coef==null)continue;
+    var d=Math.abs(EXT[i].t-t);
+    if(d<bd){bd=d;best=EXT[i].coef;}
+  }
+  return best==null?70:best;
+}
+function sunTimes(t){
+  if(!W||!W.daily)return null;
+  var idx=W.daily.time.indexOf(isoDate(t));
+  if(idx<0)return null;
+  return {rise:parseLocal(W.daily.sunrise[idx]),set:parseLocal(W.daily.sunset[idx])};
+}
+function widx(i){
+  var k=i-TODAY;
+  return (W&&W.hourly&&k>=0&&k<W.hourly.time.length)?k:null;
+}
+
+/* ---------- scoring ---------- */
+function scoreSurfAt(i){
+  var t=parseLocal(M.hourly.time[i]);
+  var ph=phaseAt(t);if(!ph)return 0;
+  var base=100-160*Math.abs(ph.p-0.5);
+  if(ph.rising)base+=8;
+  base=clamp(base,0,100);
+  var wh=M.hourly.wave_height[i], wp=M.hourly.wave_period[i], wd=M.hourly.wave_direction[i];
+  if(wh==null)return 0;
+  var fh=wh<0.3?0.15:wh<0.6?0.6:wh<=2.2?1:wh<=3?0.65:0.3;
+  var fp=wp==null?0.85:wp>=9?1:wp>=7?0.85:wp>=5?0.7:0.5;
+  var fw=1, wi=widx(i);
+  if(wi!=null){
+    var ws=W.hourly.wind_speed_10m[wi], wdir=W.hourly.wind_direction_10m[wi];
+    if(ws!=null&&wdir!=null&&wd!=null){
+      var diff=angDiff(wdir,wd);
+      if(diff<60){fw=ws<8?0.95:ws<15?0.8:ws<25?0.55:0.35;}
+      else if(diff>120){fw=ws<30?1:0.8;}
+      else{fw=ws<15?0.9:ws<25?0.7:0.5;}
+    }else if(ws!=null){fw=ws<15?0.9:ws<25?0.7:0.5;}
+  }
+  return clamp(Math.round(base*fh*fp*fw),0,100);
+}
+function scoreFishAt(i){
+  var t=parseLocal(M.hourly.time[i]);
+  var ph=phaseAt(t);if(!ph)return 0;
+  var base=ph.rising?(55+35*ph.p):(55-28*ph.p);
+  var dPM=Infinity;
+  if(ph.prev.type==="PM")dPM=Math.min(dPM,t-ph.prev.t);
+  if(ph.next.type==="PM")dPM=Math.min(dPM,ph.next.t-t);
+  if(dPM<=90*60000)base+=15;
+  var c=coefAt(t);
+  var fc=c>=90?1.12:c>=75?1.05:c>=50?1:0.85;
+  var lb=0, sr=sunTimes(t);
+  if(sr){
+    if(Math.abs(t-sr.rise)<=90*60000||Math.abs(t-sr.set)<=90*60000)lb=15;
+    else if(t>sr.set||t<sr.rise)lb=5;
+  }
+  var wh=M.hourly.wave_height[i];
+  var fsea=wh==null?1:(wh<0.3?0.9:wh<=1.5?1:wh<=2.5?0.9:0.7);
+  var wi=widx(i);
+  if(wi!=null){var ws=W.hourly.wind_speed_10m[wi];if(ws!=null&&ws>35)fsea*=0.75;}
+  return clamp(Math.round((base+lb)*fc*fsea),0,100);
+}
+function scoreDroneAt(i){
+  var t=parseLocal(M.hourly.time[i]);
+  var sr=sunTimes(t);
+  if(sr&&(t<sr.rise||t>sr.set))return 0;
+  var wi=widx(i);if(wi==null)return 0;
+  var ws=W.hourly.wind_speed_10m[wi], wg=W.hourly.wind_gusts_10m[wi];
+  var pr=W.hourly.precipitation?W.hourly.precipitation[wi]:null;
+  var prob=W.hourly.precipitation_probability?W.hourly.precipitation_probability[wi]:null;
+  return clamp(Math.round(100*droneFactors(ws,wg,pr,prob)),0,100);
+}
+function buildWindows(scores,i0,i1,thr){
+  var wins=[],cur=null;
+  for(var i=i0;i<i1;i++){
+    var s=scores[i]||0;
+    if(s>=thr){if(!cur)cur={a:i,b:i,sum:0,n:0};cur.b=i;cur.sum+=s;cur.n++;}
+    else if(cur){wins.push(cur);cur=null;}
+  }
+  if(cur)wins.push(cur);
+  return wins.filter(function(w){return w.n>=2;}).map(function(w){
+    var avg=w.sum/w.n;
+    return {a:w.a,b:w.b,
+      start:parseLocal(M.hourly.time[w.a]),
+      end:new Date(parseLocal(M.hourly.time[w.b]).getTime()+3600000),
+      stars:avg>=85?3:avg>=75?2:1};
+  });
+}
+
+/* ---------- rendering ---------- */
+function renderTabs(){
+  var el=$("#tabs");el.innerHTML="";
+  var t0=parseLocal(M.hourly.time[TODAY]);
+  for(var d=0;d<5;d++){
+    (function(d){
+      var dt=new Date(t0.getTime()+d*86400000);
+      var b=document.createElement("button");
+      b.className="tab"+(d===DAY?" on":"");
+      b.textContent=d===0?"Auj.":dt.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric"});
+      b.addEventListener("click",function(){DAY=d;renderDay();renderTabs();});
+      el.appendChild(b);
+    })(d);
+  }
+}
+
+function renderCurve(i0){
+  var VW=360,VH=132,PADX=10,PADT=22,PADB=14;
+  var lv=[],n=25;
+  for(var k=0;k<=24;k++){
+    var v=M.hourly.sea_level_height_msl[i0+k];
+    lv.push(v==null?0:v);
+  }
+  var mn=Math.min.apply(null,lv), mx=Math.max.apply(null,lv);
+  if(mx-mn<0.2){mx+=0.1;mn-=0.1;}
+  var X=function(h){return PADX+(h/24)*(VW-2*PADX);};
+  var Y=function(v){return PADT+(1-(v-mn)/(mx-mn))*(VH-PADT-PADB);};
+  var pts=[];
+  for(var k2=0;k2<n;k2++)pts.push([X(k2),Y(lv[k2])]);
+  var path=smoothPath(pts);
+  var area=path+"L"+X(24).toFixed(1)+","+VH+"L"+X(0).toFixed(1)+","+VH+"Z";
+  var s="";
+  s+="<defs><linearGradient id='gW' x1='0' y1='0' x2='0' y2='1'>";
+  s+="<stop offset='0' stop-color='#49C6D6' stop-opacity='0.28'/>";
+  s+="<stop offset='1' stop-color='#49C6D6' stop-opacity='0.02'/></linearGradient></defs>";
+  s+="<path d='"+area+"' fill='url(#gW)'/>";
+  s+="<path d='"+path+"' fill='none' stroke='#49C6D6' stroke-width='2.2' stroke-linecap='round'/>";
+  var dayStart=parseLocal(M.hourly.time[i0]);
+  var dayEnd=new Date(dayStart.getTime()+86400000);
+  for(var e=0;e<EXT.length;e++){
+    var ex=EXT[e];
+    if(ex.t<dayStart||ex.t>dayEnd)continue;
+    var hx=(ex.t-dayStart)/3600000;
+    var cx=clamp(X(hx),14,VW-14), cy=Y(ex.h);
+    s+="<circle cx='"+cx.toFixed(1)+"' cy='"+cy.toFixed(1)+"' r='3.4' fill='"+(ex.type==="PM"?"#E4D5B4":"#89A9B6")+"'/>";
+    var ty=ex.type==="PM"?(cy-8):(cy+13);
+    ty=clamp(ty,10,VH-4);
+    s+="<text x='"+cx.toFixed(1)+"' y='"+ty.toFixed(1)+"' text-anchor='middle' font-size='9.5' font-family='Spline Sans Mono,monospace' fill='"+(ex.type==="PM"?"#E4D5B4":"#89A9B6")+"'>"+fmtHM(ex.t)+"</text>";
+  }
+  var now=new Date();
+  if(now>=dayStart&&now<dayEnd){
+    var nx=X((now-dayStart)/3600000);
+    s+="<line x1='"+nx.toFixed(1)+"' y1='"+PADT+"' x2='"+nx.toFixed(1)+"' y2='"+VH+"' stroke='#EAF4F4' stroke-width='1' stroke-dasharray='3 3' opacity='0.55'/>";
+  }
+  $("#svgCurve").innerHTML=s;
+}
+
+function renderTracks(i0){
+  var mk=function(barId,scores,thr){
+    var bar=$(barId);bar.innerHTML="";
+    var wins=buildWindows(scores,i0,i0+24,thr);
+    wins.forEach(function(w){
+      var l=((w.a-i0)/24)*100, wd=((w.b-w.a+1)/24)*100;
+      var seg=document.createElement("div");
+      seg.className="seg";
+      seg.style.left=l+"%";seg.style.width=wd+"%";
+      bar.appendChild(seg);
+    });
+    return wins;
+  };
+  return {surf:mk("#barSurf",SURF,62),peche:mk("#barPeche",FISH,62),drone:mk("#barDrone",DRONE,70)};
+}
+
+function starsTxt(n){return n===3?"★★★":n===2?"★★☆":"★☆☆";}
+
+function renderWindows(wins){
+  var fill=function(sel,list,cls){
+    var el=$(sel);el.innerHTML="";
+    if(!list.length){el.innerHTML="<span class='nowin'>Pas de fenêtre nette ce jour — conditions moyennes.</span>";return;}
+    list.forEach(function(w){
+      var c=document.createElement("span");
+      c.className="chip "+cls;
+      c.innerHTML=fmtHM(w.start)+" → "+fmtHM(w.end)+" <span class='st'>"+starsTxt(w.stars)+"</span>";
+      el.appendChild(c);
+    });
+  };
+  fill("#winSurf",wins.surf,"surf");
+  fill("#winPeche",wins.peche,"peche");
+  fill("#winDrone",wins.drone,"drone");
+}
+
+function renderTideTable(dayStart,dayEnd){
+  var tb=$("#tideRows");tb.innerHTML="";
+  var rows=0;
+  for(var e=0;e<EXT.length;e++){
+    var ex=EXT[e];
+    if(ex.t<dayStart||ex.t>=dayEnd)continue;
+    rows++;
+    var tr=document.createElement("tr");
+    var sign=ex.h>=0?"+":"−";
+    var coefCell=(ex.type==="PM"&&ex.coef!=null)?("<td class='t-c'>"+ex.coef+"<small>coef</small></td>"):"<td class='t-c'></td>";
+    tr.innerHTML="<td><span class='badge "+(ex.type==="PM"?"pm":"bm")+"'>"+(ex.type==="PM"?"Pleine mer":"Basse mer")+"</span></td>"+
+      "<td class='t-time'>"+fmtHM(ex.t)+"</td>"+
+      "<td class='t-h'>"+sign+frNum(Math.abs(ex.h),2)+" m</td>"+coefCell;
+    tb.appendChild(tr);
+  }
+  if(!rows)tb.innerHTML="<tr><td class='nowin'>Aucun extremum détecté ce jour.</td></tr>";
+}
+
+function coefLabel(c){return c<45?"morte-eau":c<70?"marée moyenne":c<95?"vive-eau":"grande vive-eau";}
+
+function renderHead(dayStart,dayEnd){
+  var now=new Date();
+  var pmMax=null;
+  for(var e=0;e<EXT.length;e++){
+    var ex=EXT[e];
+    if(ex.t<dayStart||ex.t>=dayEnd||ex.type!=="PM")continue;
+    if(pmMax==null||(ex.coef||0)>(pmMax.coef||0))pmMax=ex;
+  }
+  if(DAY===0){
+    var nx=null;
+    for(var i=0;i<EXT.length;i++){if(EXT[i].t>now){nx=EXT[i];break;}}
+    if(nx){
+      $("#ntLbl").textContent="Prochaine marée";
+      $("#ntBig").textContent=(nx.type==="PM"?"Pleine mer":"Basse mer")+" "+fmtHM(nx.t);
+      $("#ntSub").textContent="dans "+fmtDur(nx.t-now);
+      var cRef=nx.type==="PM"?nx:null;
+      if(!cRef){for(var j=0;j<EXT.length;j++){if(EXT[j].t>now&&EXT[j].type==="PM"){cRef=EXT[j];break;}}}
+      $("#coefNum").textContent=(cRef&&cRef.coef!=null)?cRef.coef:"—";
+      $("#coefTag").textContent=(cRef&&cRef.coef!=null)?coefLabel(cRef.coef):"";
+      return;
+    }
+  }
+  $("#ntLbl").textContent="Pleine mer";
+  var pms=[];
+  for(var k=0;k<EXT.length;k++){
+    var x=EXT[k];
+    if(x.t>=dayStart&&x.t<dayEnd&&x.type==="PM")pms.push(fmtHM(x.t));
+  }
+  $("#ntBig").textContent=pms.length?pms.join(" · "):"—";
+  $("#ntSub").textContent=pmMax&&pmMax.semi!=null?("marnage ≈ "+frNum(2*pmMax.semi,1)+" m"):"";
+  $("#coefNum").textContent=pmMax&&pmMax.coef!=null?pmMax.coef:"—";
+  $("#coefTag").textContent=pmMax&&pmMax.coef!=null?coefLabel(pmMax.coef):"";
+}
+
+function renderCond(i0){
+  var now=new Date();
+  var i=i0+12;
+  if(DAY===0){
+    var k=TODAY+Math.floor((now-parseLocal(M.hourly.time[TODAY]))/3600000);
+    if(k>=i0&&k<i0+24)i=k;
+  }
+  var wh=M.hourly.wave_height[i], wp=M.hourly.wave_period[i], wd=M.hourly.wave_direction[i];
+  var g=$("#condGrid");g.innerHTML="";
+  var tile=function(v,u,d){
+    var el=document.createElement("div");
+    el.className="cond";
+    el.innerHTML="<div class='v'>"+v+"</div><div class='u'>"+u+"</div>"+(d?"<div class='d'>"+d+"</div>":"");
+    g.appendChild(el);
+  };
+  tile(wh!=null?frNum(wh,1)+" m":"—","Vagues",wd!=null?compass(wd):"");
+  tile(wp!=null?frNum(wp,0)+" s":"—","Période","");
+  var wi=widx(i);
+  var ws=null,wdir=null,wg=null,pr=null,prob=null;
+  if(wi!=null){
+    ws=W.hourly.wind_speed_10m[wi];wdir=W.hourly.wind_direction_10m[wi];wg=W.hourly.wind_gusts_10m[wi];
+    pr=W.hourly.precipitation?W.hourly.precipitation[wi]:null;
+    prob=W.hourly.precipitation_probability?W.hourly.precipitation_probability[wi]:null;
+  }
+  tile(ws!=null?frNum(ws,0)+" km/h":"—","Vent",wdir!=null?compass(wdir):"");
+  tile(wg!=null?frNum(wg,0)+" km/h":"—","Rafales","");
+  tile(pr!=null?frNum(pr,1)+" mm":"—","Pluie",prob!=null?frNum(prob,0)+" %":"");
+  var sr=sunTimes(parseLocal(M.hourly.time[i0]));
+  tile(sr?fmtHM(sr.rise):"—","Lever · coucher",sr?fmtHM(sr.set):"");
+}
+
+/* ---------- vent en direct (drone) ---------- */
+function renderDroneNow(){
+  var el=$("#droneNow");if(!el)return;
+  var c=W&&W.current;
+  if(!c||c.wind_speed_10m==null){el.style.display="none";return;}
+  var ws=c.wind_speed_10m, wg=c.wind_gusts_10m, wdir=c.wind_direction_10m, pr=c.precipitation;
+  var cls=(pr!=null&&pr>0.1)?"no":(ws<20&&(wg==null||wg<30))?"ok":(ws<30&&(wg==null||wg<45))?"warn":"no";
+  var verdict=cls==="ok"?"Vol OK":cls==="warn"?"Prudence":(pr!=null&&pr>0.1)?"Pluie — au sol":"Trop de vent";
+  el.style.display="flex";
+  el.innerHTML="<span class='wnum "+cls+"'>"+frNum(ws,0)+" km/h</span>"
+    +"<span class='wdet'>"+(wdir!=null?compass(wdir):"")+(wg!=null?" · raf. "+frNum(wg,0)+" km/h":"")+"</span>"
+    +"<span class='wverdict "+cls+"'>"+verdict+"</span>"
+    +"<span class='wts'>Vent en direct"+(c.time?" · "+fmtHM(parseLocal(c.time)):"")+"</span>";
+}
+function refreshCurrent(){
+  if(state.la==null)return;
+  var u="https://api.open-meteo.com/v1/forecast?latitude="+state.la+"&longitude="+state.lo+"&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation&timezone=auto";
+  fetch(u).then(function(r){return r.json();}).then(function(j){
+    if(j&&j.current){if(W)W.current=j.current;renderDroneNow();}
+  }).catch(function(){});
+}
+
+function renderDay(){
+  var i0=TODAY+DAY*24;
+  var dayStart=parseLocal(M.hourly.time[i0]);
+  var dayEnd=new Date(dayStart.getTime()+86400000);
+  renderHead(dayStart,dayEnd);
+  renderCurve(i0);
+  var wins=renderTracks(i0);
+  renderWindows(wins);
+  renderTideTable(dayStart,dayEnd);
+  renderCond(i0);
+  renderDroneNow();
+}
+
+/* ---------- data pipeline ---------- */
+function processAll(){
+  EXT=computeExtrema(M.hourly.time,M.hourly.sea_level_height_msl);
+  attachCoefs(EXT);
+  var now=new Date();
+  TODAY=M.hourly.time.indexOf(isoDate(now)+"T00:00");
+  if(TODAY<0)TODAY=7*24;
+  SURF=[];FISH=[];DRONE=[];
+  var end=Math.min(M.hourly.time.length,TODAY+5*24);
+  for(var i=TODAY;i<end;i++){SURF[i]=scoreSurfAt(i);FISH[i]=scoreFishAt(i);DRONE[i]=scoreDroneAt(i);}
+  DAY=0;
+  renderTabs();
+  renderDay();
+  if(state.la!=null)renderDroneZone();
+  show("#app");
+}
+
+/* ---------- zone drone (carte DGAC/IGN via Geoplateforme) ---------- */
+function renderDroneZone(){
+  var el=$("#droneZone");if(!el)return;
+  var la=state.la, lo=state.lo;
+  var gp="https://www.geoportail.gouv.fr/carte?c="+lo+","+la+"&z=13&l0=TRANSPORTS.DRONES.RESTRICTIONS::GEOPORTAIL:OGC:WMTS(1)&permalink=yes";
+  var base="<a class='linkbtn' target='_blank' rel='noopener' href='"+gp+"'>Vérifier sur la carte officielle Géoportail</a>"
+    +"<p class='zhint'>Carte loisir 0–120 m, hors interdictions temporaires (NOTAM / SUP AIP : sia.aviation-civile.gouv.fr). "
+    +"Rappels catégorie ouverte : hauteur max 120 m, vol de jour, drone toujours en vue, jamais au-dessus des personnes, "
+    +"agglomération interdite en loisir, plages fréquentées = survol de tiers interdit.</p>";
+  el.innerHTML="<div class='zstat'>Zone : interrogation de la carte DGAC/IGN…</div>"+base;
+  var d=0.008;
+  var bb=(la-d)+","+(lo-d)+","+(la+d)+","+(lo+d);
+  var u="https://data.geopf.fr/wms-r/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo"
+    +"&LAYERS=TRANSPORTS.DRONES.RESTRICTIONS&QUERY_LAYERS=TRANSPORTS.DRONES.RESTRICTIONS"
+    +"&STYLES=&FORMAT=image/png&INFO_FORMAT=application/json&CRS=EPSG:4326"
+    +"&WIDTH=101&HEIGHT=101&I=50&J=50&BBOX="+bb;
+  fetch(u).then(function(r){
+    if(!r.ok)throw new Error("http");
+    return r.json();
+  }).then(function(j){
+    var feats=(j&&j.features)||[];
+    var msg;
+    if(!feats.length){
+      msg="<span class='ok'>Aucune restriction recensée à ce point</span> — règles générales de la catégorie ouverte.";
+    }else{
+      var lim=null;
+      feats.forEach(function(f){
+        var p=f.properties||{};
+        Object.keys(p).forEach(function(k){
+          if(/limite|restriction|plafond|hauteur/i.test(k)){
+            var v=parseFloat(p[k]);
+            if(!isNaN(v)&&(lim==null||v<lim))lim=v;
+          }
+        });
+      });
+      if(lim===0)msg="<span class='no'>VOL INTERDIT à ce point</span> (zone à restriction totale, carte DGAC).";
+      else if(lim!=null)msg="<span class='warn'>Zone réglementée : hauteur max "+lim+" m</span> à ce point (carte DGAC).";
+      else msg="<span class='warn'>Zone soumise à restriction</span> — détail à vérifier sur la carte.";
+    }
+    el.innerHTML="<div class='zstat'>"+msg+"</div>"+base;
+  }).catch(function(){
+    el.innerHTML="<div class='zstat'>Interrogation automatique indisponible — vérifie directement sur la carte :</div>"+base;
+  });
+}
+
+function probeMarine(la,lo){
+  var cands=probeCandidates(la,lo);
+  var las=cands.map(function(c){return c[0].toFixed(4);}).join(",");
+  var los=cands.map(function(c){return c[1].toFixed(4);}).join(",");
+  var u="https://marine-api.open-meteo.com/v1/marine?latitude="+las+"&longitude="+los+"&hourly=sea_level_height_msl&forecast_days=1&timezone=auto&cell_selection=sea";
+  return fetch(u).then(function(r){return r.json();}).then(function(arr){
+    if(!Array.isArray(arr))arr=[arr];
+    for(var i=0;i<arr.length&&i<cands.length;i++){
+      var h=arr[i]&&arr[i].hourly&&arr[i].hourly.sea_level_height_msl;
+      if(h){
+        var ok=0;
+        for(var k=0;k<h.length;k++){if(h[k]!=null)ok++;}
+        if(ok>=12)return {la:cands[i][0],lo:cands[i][1]};
+      }
+    }
+    return null;
+  });
+}
+
+function fetchAll(la,lo,label,silent){
+  if(!silent)show("#loading");
+  probeMarine(la,lo).then(function(pt){
+    if(!pt)throw new Error("no-tide");
+    var mu="https://marine-api.open-meteo.com/v1/marine?latitude="+pt.la+"&longitude="+pt.lo+"&hourly=sea_level_height_msl,wave_height,wave_period,wave_direction&timezone=auto&past_days=7&forecast_days=8&cell_selection=sea";
+    var wu="https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation&timezone=auto&forecast_days=8";
+    return Promise.all([
+      fetch(mu).then(function(r){return r.json();}),
+      fetch(wu).then(function(r){return r.json();})
+    ]).then(function(res){
+      var m=res[0],w=res[1];
+      if(!m||!m.hourly||!m.hourly.sea_level_height_msl)throw new Error("no-tide");
+      M=m;W=w;
+      state.la=la;state.lo=lo;state.mla=pt.la;state.mlo=pt.lo;
+      state.label=label||state.label||"Position GPS";
+      $("#locName").textContent=state.label;
+      try{localStorage.setItem(CACHE_KEY,JSON.stringify({la:la,lo:lo,mla:pt.la,mlo:pt.lo,label:state.label,at:Date.now(),M:m,W:w}));}catch(e){}
+      processAll();
+      if(silent)toast("Données actualisées");
+    });
+  }).catch(function(err){
+    if(silent){toast("Actualisation impossible (hors ligne ?)");return;}
+    var msg=err&&err.message==="no-tide"
+      ?"Pas de marée modélisée ici, même en sondant ~25 km à la ronde. Cherche un spot côtier."
+      :"Impossible de charger les données. Vérifie ta connexion.";
+    $("#errMsg").textContent=msg;
+    show("#err");
+  });
+}
+
+function reverseLabel(la,lo){
+  fetch("https://api.bigdatacloud.net/data/reverse-geocode-client?latitude="+la+"&longitude="+lo+"&localityLanguage=fr")
+    .then(function(r){return r.json();})
+    .then(function(j){
+      var name=j.locality||j.city||j.principalSubdivision;
+      if(name){state.label=name;$("#locName").textContent=name;
+        try{
+          var c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");
+          if(c){c.label=name;localStorage.setItem(CACHE_KEY,JSON.stringify(c));}
+        }catch(e){}
+      }
+    }).catch(function(){});
+}
+
+function onPos(pos,silent){
+  var la=Math.round(pos.coords.latitude*10000)/10000;
+  var lo=Math.round(pos.coords.longitude*10000)/10000;
+  fetchAll(la,lo,null,silent);
+  reverseLabel(la,lo);
+}
+function gpsHardFail(silent,why){
+  if(silent)return;
+  var c=null;
+  try{c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");}catch(e){}
+  if(c&&c.M){M=c.M;W=c.W;state.la=c.la;state.lo=c.lo;state.label=c.label;
+    $("#locName").textContent=c.label;processAll();toast(why);return;}
+  $("#errMsg").textContent=why+" Tu peux aussi chercher un spot manuellement.";
+  show("#err");
+}
+function locIP(silent,why){
+  if(!silent){show("#loading");if(why)toast(why);}
+  fetch("https://ipwho.is/").then(function(r){return r.json();}).then(function(j){
+    if(j&&j.success!==false&&j.latitude!=null){
+      fetchAll(j.latitude,j.longitude,(j.city?j.city+" (approx. IP)":"Position IP"),silent);
+      return;
+    }
+    throw new Error("ipwho");
+  }).catch(function(){
+    fetch("https://ipapi.co/json/").then(function(r){return r.json();}).then(function(j){
+      if(j&&j.latitude!=null){
+        fetchAll(j.latitude,j.longitude,(j.city?j.city+" (approx. IP)":"Position IP"),silent);
+      }else gpsHardFail(silent,why||"Position introuvable.");
+    }).catch(function(){gpsHardFail(silent,why||"Position introuvable.");});
+  });
+}
+function locate(silent){
+  if(!("geolocation" in navigator)){
+    locIP(silent,"Pas de GPS sur ce navigateur — position approximative par IP.");
+    return;
+  }
+  if(!window.isSecureContext){
+    locIP(silent,"Site ouvert en HTTP : le navigateur bloque le GPS (il faut du HTTPS, ex. GitHub Pages). Position approchée par IP.");
+    return;
+  }
+  var MSG_DENIED="GPS bloqué pour ce site. Sur Chrome Android : menu ⋮ > Paramètres > Paramètres des sites > Position > autorise ce site. Vérifie aussi que la localisation Android est activée pour Chrome. Position approchée par IP en attendant.";
+  var go=function(){
+    if(!silent)show("#loading");
+    navigator.geolocation.getCurrentPosition(function(pos){onPos(pos,silent);},function(err){
+      if(err&&err.code===1){locIP(silent,MSG_DENIED);return;}
+      navigator.geolocation.getCurrentPosition(function(pos){onPos(pos,silent);},function(){
+        locIP(silent,"Signal GPS introuvable — position approchée par IP.");
+      },{enableHighAccuracy:false,timeout:10000,maximumAge:600000});
+    },{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
+  };
+  if(navigator.permissions&&navigator.permissions.query){
+    navigator.permissions.query({name:"geolocation"}).then(function(st){
+      if(st.state==="denied"){locIP(silent,MSG_DENIED);}
+      else go();
+    }).catch(go);
+  }else go();
+}
+
+/* ---------- search ---------- */
+var qTimer=null;
+function doSearch(q){
+  fetch("https://geocoding-api.open-meteo.com/v1/search?name="+encodeURIComponent(q)+"&count=8&language=fr&format=json")
+    .then(function(r){return r.json();})
+    .then(function(j){
+      var el=$("#results");el.innerHTML="";
+      var list=(j&&j.results)||[];
+      if(!list.length){el.innerHTML="<div class='rline'><small>Aucun résultat.</small></div>";return;}
+      list.forEach(function(p){
+        var d=document.createElement("div");
+        d.className="rline";
+        d.innerHTML=p.name+"<small>"+[p.admin1,p.country].filter(Boolean).join(", ")+"</small>";
+        d.addEventListener("click",function(){
+          $("#modal").classList.remove("open");
+          fetchAll(p.latitude,p.longitude,p.name,false);
+        });
+        el.appendChild(d);
+      });
+    }).catch(function(){});
+}
+
+/* ---------- init ---------- */
+function init(){
+  $("#btnGps").addEventListener("click",function(){locate(false);});
+  $("#btnRetry").addEventListener("click",function(){locate(false);});
+  $("#btnRefresh").addEventListener("click",function(){
+    if(state.la!=null)fetchAll(state.la,state.lo,state.label,false);else locate(false);
+  });
+  var openModal=function(){$("#modal").classList.add("open");$("#q").focus();};
+  $("#locPill").addEventListener("click",openModal);
+  $("#btnManual").addEventListener("click",openModal);
+  $("#btnClose").addEventListener("click",function(){$("#modal").classList.remove("open");});
+  $("#modal").addEventListener("click",function(e){if(e.target.id==="modal")$("#modal").classList.remove("open");});
+  $("#q").addEventListener("input",function(){
+    var v=this.value.trim();
+    clearTimeout(qTimer);
+    if(v.length<2)return;
+    qTimer=setTimeout(function(){doSearch(v);},350);
+  });
+  setInterval(function(){if(M&&DAY===0)renderDay();},60000);
+  setInterval(refreshCurrent,600000);
+  var c=null;
+  try{c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");}catch(e){}
+  if(c&&c.M&&(Date.now()-c.at)<6*3600000){
+    M=c.M;W=c.W;state.la=c.la;state.lo=c.lo;state.label=c.label;
+    $("#locName").textContent=c.label||"Dernier spot";
+    processAll();
+    locate(true);
+  }else{
+    locate(false);
+  }
+}
+document.addEventListener("DOMContentLoaded",init);
+})();
+</script>
+</body>
+</html>
