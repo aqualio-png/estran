@@ -192,6 +192,14 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
 .dnow .wverdict.warn{color:var(--peche)}
 .dnow .wverdict.no{color:var(--bad)}
 .dnow .wts{flex-basis:100%; color:var(--mist); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase}
+/* températures surf */
+.tstrip{display:flex; gap:8px; margin-bottom:11px}
+.tpill{
+  flex:1; text-align:center; background:var(--panel2); border:1px solid var(--line);
+  border-radius:10px; padding:9px 10px;
+  font-family:"Spline Sans Mono",monospace; font-size:13.5px; font-weight:600;
+}
+.tpill small{display:block; color:var(--mist); font-size:10px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:2px; font-family:"Instrument Sans",sans-serif}
 @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
 </style>
 </head>
@@ -247,6 +255,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
 
     <section class="card">
       <h2><span class="sw" style="background:var(--surf)"></span>Fenêtres surf</h2>
+      <div class="tstrip" id="surfTemps" style="display:none"></div>
       <div class="winrow" id="winSurf"></div>
     </section>
 
@@ -297,7 +306,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s);};
-var CACHE_KEY="estran_v1";
+var CACHE_KEY="estran_v2";
 var M=null, W=null, EXT=[], TODAY=0, DAY=0, SURF=[], FISH=[], DRONE=[];
 var state={la:null, lo:null, label:""};
 
@@ -543,8 +552,16 @@ function renderCurve(i0){
   }
   var now=new Date();
   if(now>=dayStart&&now<dayEnd){
-    var nx=X((now-dayStart)/3600000);
+    var hN=(now-dayStart)/3600000;
+    var nx=X(hN);
     s+="<line x1='"+nx.toFixed(1)+"' y1='"+PADT+"' x2='"+nx.toFixed(1)+"' y2='"+VH+"' stroke='#EAF4F4' stroke-width='1' stroke-dasharray='3 3' opacity='0.55'/>";
+    var iN=Math.floor(hN);
+    if(iN>=0&&iN<24){
+      var vN=lv[iN]+(lv[iN+1]-lv[iN])*(hN-iN);
+      var cyN=Y(vN);
+      s+="<circle cx='"+nx.toFixed(1)+"' cy='"+cyN.toFixed(1)+"' r='7.5' fill='#49C6D6' opacity='0.25'/>";
+      s+="<circle cx='"+nx.toFixed(1)+"' cy='"+cyN.toFixed(1)+"' r='4.2' fill='#49C6D6' stroke='#EAF4F4' stroke-width='1.4'/>";
+    }
   }
   $("#svgCurve").innerHTML=s;
 }
@@ -684,10 +701,31 @@ function renderDroneNow(){
 }
 function refreshCurrent(){
   if(state.la==null)return;
-  var u="https://api.open-meteo.com/v1/forecast?latitude="+state.la+"&longitude="+state.lo+"&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation&timezone=auto";
+  var u="https://api.open-meteo.com/v1/forecast?latitude="+state.la+"&longitude="+state.lo+"&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m&timezone=auto";
   fetch(u).then(function(r){return r.json();}).then(function(j){
-    if(j&&j.current){if(W)W.current=j.current;renderDroneNow();}
+    if(j&&j.current){if(W)W.current=j.current;renderDroneNow();if(M&&DAY===0)renderSurfTemps(TODAY);}
   }).catch(function(){});
+}
+
+function renderSurfTemps(i0){
+  var el=$("#surfTemps");if(!el)return;
+  var now=new Date();
+  var i=i0+12;
+  if(DAY===0){
+    var k=TODAY+Math.floor((now-parseLocal(M.hourly.time[TODAY]))/3600000);
+    if(k>=i0&&k<i0+24)i=k;
+  }
+  var sst=M.hourly.sea_surface_temperature?M.hourly.sea_surface_temperature[i]:null;
+  var air=null;
+  if(DAY===0&&W&&W.current&&W.current.temperature_2m!=null)air=W.current.temperature_2m;
+  else{
+    var wi=widx(i);
+    if(wi!=null&&W.hourly.temperature_2m)air=W.hourly.temperature_2m[wi];
+  }
+  if(sst==null&&air==null){el.style.display="none";return;}
+  el.style.display="flex";
+  el.innerHTML="<span class='tpill'><small>Eau</small>🌊 "+(sst!=null?frNum(sst,1)+" °C":"—")+"</span>"
+    +"<span class='tpill'><small>Air"+(DAY===0?" (direct)":"")+"</small>🌡️ "+(air!=null?frNum(air,1)+" °C":"—")+"</span>";
 }
 
 function renderDay(){
@@ -701,6 +739,7 @@ function renderDay(){
   renderTideTable(dayStart,dayEnd);
   renderCond(i0);
   renderDroneNow();
+  renderSurfTemps(i0);
 }
 
 /* ---------- data pipeline ---------- */
@@ -788,8 +827,8 @@ function fetchAll(la,lo,label,silent){
   if(!silent)show("#loading");
   probeMarine(la,lo).then(function(pt){
     if(!pt)throw new Error("no-tide");
-    var mu="https://marine-api.open-meteo.com/v1/marine?latitude="+pt.la+"&longitude="+pt.lo+"&hourly=sea_level_height_msl,wave_height,wave_period,wave_direction&timezone=auto&past_days=7&forecast_days=8&cell_selection=sea";
-    var wu="https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation&timezone=auto&forecast_days=8";
+    var mu="https://marine-api.open-meteo.com/v1/marine?latitude="+pt.la+"&longitude="+pt.lo+"&hourly=sea_level_height_msl,wave_height,wave_period,wave_direction,sea_surface_temperature&timezone=auto&past_days=7&forecast_days=8&cell_selection=sea";
+    var wu="https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,temperature_2m&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m&timezone=auto&forecast_days=8";
     return Promise.all([
       fetch(mu).then(function(r){return r.json();}),
       fetch(wu).then(function(r){return r.json();})
