@@ -144,6 +144,9 @@ table.tides tr:first-child td{border-top:none}
   text-decoration:none; margin-bottom:9px;
 }
 .zhint{color:var(--mist); font-size:11.5px; line-height:1.5}
+.mapwrap{border:1px solid var(--line); border-radius:12px; overflow:hidden; margin-bottom:8px; background:var(--deep)}
+.gmap{display:block; width:100%; height:320px; border:0}
+.maplink{display:block; text-align:center; color:var(--surf); font-size:12.5px; font-weight:600; text-decoration:none; margin-bottom:9px}
 /* states */
 #loading,#err{padding:60px 20px; text-align:center; color:var(--mist)}
 #loading .wv{font-size:34px; animation:bob 1.6s ease-in-out infinite; display:inline-block}
@@ -764,12 +767,16 @@ function processAll(){
 function renderDroneZone(){
   var el=$("#droneZone");if(!el)return;
   var la=state.la, lo=state.lo;
-  var gp="https://www.geoportail.gouv.fr/carte?c="+lo+","+la+"&z=13&l0=TRANSPORTS.DRONES.RESTRICTIONS::GEOPORTAIL:OGC:WMTS(1)&permalink=yes";
-  var base="<a class='linkbtn' target='_blank' rel='noopener' href='"+gp+"'>Vérifier sur la carte officielle Géoportail</a>"
-    +"<p class='zhint'>Carte loisir 0–120 m, hors interdictions temporaires (NOTAM / SUP AIP : sia.aviation-civile.gouv.fr). "
+  var emb="https://www.geoportail.gouv.fr/embed/visu.html?c="+lo+","+la
+    +"&z=12&l0=ORTHOIMAGERY.ORTHOPHOTOS::GEOPORTAIL:OGC:WMTS(1;g)"
+    +"&l1=TRANSPORTS.DRONES.RESTRICTIONS::GEOPORTAIL:OGC:WMTS(0.9)&permalink=yes";
+  var gp="https://www.geoportail.gouv.fr/carte?c="+lo+","+la+"&z=12&l0=TRANSPORTS.DRONES.RESTRICTIONS::GEOPORTAIL:OGC:WMTS(1)&permalink=yes";
+  var base="<div class='mapwrap'><iframe class='gmap' sandbox='allow-forms allow-scripts allow-same-origin' src='"+emb+"' allowfullscreen loading='lazy' title='Carte des restrictions drones (Geoportail)'></iframe></div>"
+    +"<a class='maplink' target='_blank' rel='noopener' href='"+gp+"'>Ouvrir en grand sur Géoportail</a>"
+    +"<p class='zhint'>Carte loisir 0–120 m (zones colorées = restrictions), hors interdictions temporaires (NOTAM / SUP AIP : sia.aviation-civile.gouv.fr). "
     +"Rappels catégorie ouverte : hauteur max 120 m, vol de jour, drone toujours en vue, jamais au-dessus des personnes, "
     +"agglomération interdite en loisir, plages fréquentées = survol de tiers interdit.</p>";
-  el.innerHTML="<div class='zstat'>Zone : interrogation de la carte DGAC/IGN…</div>"+base;
+  el.innerHTML="<div class='zstat' id='zstat'>Zone : interrogation de la carte DGAC/IGN…</div>"+base;
   var d=0.008;
   var bb=(la-d)+","+(lo-d)+","+(la+d)+","+(lo+d);
   var u="https://data.geopf.fr/wms-r/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo"
@@ -799,9 +806,9 @@ function renderDroneZone(){
       else if(lim!=null)msg="<span class='warn'>Zone réglementée : hauteur max "+lim+" m</span> à ce point (carte DGAC).";
       else msg="<span class='warn'>Zone soumise à restriction</span> — détail à vérifier sur la carte.";
     }
-    el.innerHTML="<div class='zstat'>"+msg+"</div>"+base;
+    var zs=$("#zstat");if(zs)zs.innerHTML=msg;
   }).catch(function(){
-    el.innerHTML="<div class='zstat'>Interrogation automatique indisponible — vérifie directement sur la carte :</div>"+base;
+    var zs=$("#zstat");if(zs)zs.innerHTML="Interrogation automatique indisponible — vérifie les zones colorées sur la carte ci-dessous.";
   });
 }
 
