@@ -214,6 +214,10 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
   font-family:"Spline Sans Mono",monospace; font-size:13.5px; font-weight:600;
 }
 .tpill small{display:block; color:var(--mist); font-size:10px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:2px; font-family:"Instrument Sans",sans-serif}
+.uvok{color:#7BD88F}
+.uvmid{color:var(--sand)}
+.uvwarn{color:var(--peche)}
+.uvno{color:var(--bad)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
 </style>
 </head>
@@ -313,7 +317,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
     </section>
 
     <footer>
-      Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Prévisions météo : Météo-France AROME/ARPEGE (Open-Meteo). Radar : RainViewer. Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
+      Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau : température de surface, modèle Copernicus Marine au point en mer indiqué (l'eau du bord peut différer de 1–2 °C). UV : Copernicus CAMS. Radar : RainViewer. Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Coefficients <b>estimés</b> à partir du marnage local — valeurs officielles : SHOM / annuaire des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
       Heures locales du spot, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
@@ -333,7 +337,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s);};
-var CACHE_KEY="estran_v3";
+var CACHE_KEY="estran_v4";
 var M=null, W=null, EXT=[], TODAY=0, DAY=0, SURF=[], FISH=[], DRONE=[];
 var state={la:null, lo:null, label:""};
 
@@ -425,6 +429,20 @@ function droneFactors(ws,wg,pr,prob,wc){
   else if(wc!=null&&wc>=51&&wc<=57)fR=0.4;
   else if(prob!=null){fR=prob>=60?0.45:prob>=30?0.8:1;}
   return fW*fG*fR;
+}
+function distKm(la1,lo1,la2,lo2){
+  var R=6371, r=Math.PI/180;
+  var dLa=(la2-la1)*r, dLo=(lo2-lo1)*r;
+  var A=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(la1*r)*Math.cos(la2*r)*Math.sin(dLo/2)*Math.sin(dLo/2);
+  return 2*R*Math.asin(Math.sqrt(A));
+}
+function uvLabel(v){
+  if(v==null)return null;
+  if(v<3)return {l:"faible",cls:"ok"};
+  if(v<6)return {l:"mod\u00e9r\u00e9",cls:"mid"};
+  if(v<8)return {l:"\u00e9lev\u00e9",cls:"warn"};
+  if(v<11)return {l:"tr\u00e8s \u00e9lev\u00e9",cls:"no"};
+  return {l:"extr\u00eame",cls:"no"};
 }
 function probeCandidates(la,lo){
   var c=[[la,lo]];
@@ -799,10 +817,30 @@ function renderSurfTemps(i0){
     var wi=widx(i);
     if(wi!=null&&W.hourly.temperature_2m)air=W.hourly.temperature_2m[wi];
   }
-  if(sst==null&&air==null){el.style.display="none";return;}
+  var uv=null, uvMax=false;
+  if(W.hourly.uv_index){
+    if(DAY===0){
+      var wiU=widx(i);
+      if(wiU!=null&&wiU<W.hourly.uv_index.length)uv=W.hourly.uv_index[wiU];
+    }else{
+      var mx=null;
+      for(var q=i0;q<i0+24;q++){
+        var wq=widx(q);
+        if(wq==null||wq>=W.hourly.uv_index.length)continue;
+        var vq=W.hourly.uv_index[wq];
+        if(vq!=null&&(mx==null||vq>mx))mx=vq;
+      }
+      uv=mx;uvMax=true;
+    }
+  }
+  var ul=uvLabel(uv);
+  var dist=null;
+  if(state.mla!=null&&state.la!=null)dist=distKm(state.la,state.lo,state.mla,state.mlo);
+  if(sst==null&&air==null&&uv==null){el.style.display="none";return;}
   el.style.display="flex";
-  el.innerHTML="<span class='tpill'><small>Eau</small>🌊 "+(sst!=null?frNum(sst,1)+" °C":"—")+"</span>"
-    +"<span class='tpill'><small>Air"+(DAY===0?" (direct)":"")+"</small>🌡️ "+(air!=null?frNum(air,1)+" °C":"—")+"</span>";
+  el.innerHTML="<span class='tpill'><small>Eau"+(dist!=null&&dist>=2?" · à "+frNum(dist,0)+" km":"")+"</small>🌊 "+(sst!=null?frNum(sst,1)+" °C":"—")+"</span>"
+    +"<span class='tpill'><small>Air"+(DAY===0?" (direct)":"")+"</small>🌡️ "+(air!=null?frNum(air,1)+" °C":"—")+"</span>"
+    +"<span class='tpill'><small>UV"+(uvMax?" max jour":"")+"</small>"+(ul?"<span class='uv"+ul.cls+"'>☀️ "+frNum(uv,0)+" · "+ul.l+"</span>":"—")+"</span>";
 }
 
 function renderStorm(i0){
@@ -1007,12 +1045,15 @@ function fetchAll(la,lo,label,silent){
     if(!pt)throw new Error("no-tide");
     var mu="https://marine-api.open-meteo.com/v1/marine?latitude="+pt.la+"&longitude="+pt.lo+"&hourly=sea_level_height_msl,wave_height,wave_period,wave_direction,sea_surface_temperature&timezone=auto&past_days=7&forecast_days=8&cell_selection=sea";
     var wu="https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,temperature_2m,weather_code&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m,weather_code&timezone=auto&forecast_days=8&models=meteofrance_seamless";
+    var uu="https://air-quality-api.open-meteo.com/v1/air-quality?latitude="+la+"&longitude="+lo+"&hourly=uv_index&timezone=auto&forecast_days=7";
     return Promise.all([
       fetch(mu).then(function(r){return r.json();}),
-      fetch(wu).then(function(r){return r.json();})
+      fetch(wu).then(function(r){return r.json();}),
+      fetch(uu).then(function(r){return r.json();}).catch(function(){return null;})
     ]).then(function(res){
       var m=res[0],w=res[1];
       if(!m||!m.hourly||!m.hourly.sea_level_height_msl)throw new Error("no-tide");
+      if(res[2]&&res[2].hourly&&res[2].hourly.uv_index)w.hourly.uv_index=res[2].hourly.uv_index;
       M=m;W=w;
       state.la=la;state.lo=lo;state.mla=pt.la;state.mlo=pt.lo;
       state.label=label||state.label||"Position GPS";
