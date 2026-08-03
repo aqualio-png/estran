@@ -10,6 +10,8 @@
 <title>Estran - marées, surf &amp; pêche du bord</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -144,9 +146,18 @@ table.tides tr:first-child td{border-top:none}
   text-decoration:none; margin-bottom:9px;
 }
 .zhint{color:var(--mist); font-size:11.5px; line-height:1.5}
-.mapwrap{border:1px solid var(--line); border-radius:12px; overflow:hidden; margin-bottom:8px; background:var(--deep)}
+.mapwrap{border:1px solid var(--line); border-radius:12px; overflow:hidden; margin-bottom:8px; background:var(--deep); position:relative; z-index:0}
 .gmap{display:block; width:100%; height:320px; border:0}
 .maplink{display:block; text-align:center; color:var(--surf); font-size:12.5px; font-weight:600; text-decoration:none; margin-bottom:9px}
+.alert{
+  background:rgba(224,108,91,.14); border:1px solid rgba(224,108,91,.45); color:#F2A99B;
+  border-radius:10px; padding:8px 12px; font-size:13px; font-weight:600; margin:10px 4px 0;
+}
+#radarMap{height:300px; background:var(--deep)}
+.radbar{display:flex; align-items:center; gap:12px; margin:2px 0 8px}
+.radbar .ghost{margin-top:0; padding:8px 16px}
+.radtime{color:var(--mist); font-family:"Spline Sans Mono",monospace; font-size:12.5px}
+#gpMap{height:320px; background:var(--deep)}
 /* states */
 #loading,#err{padding:60px 20px; text-align:center; color:var(--mist)}
 #loading .wv{font-size:34px; animation:bob 1.6s ease-in-out infinite; display:inline-block}
@@ -248,6 +259,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
           <div class="tag" id="coefTag"></div>
         </div>
       </div>
+      <div class="alert" id="stormAlert" style="display:none"></div>
       <svg class="curve" id="svgCurve" viewBox="0 0 360 132" preserveAspectRatio="none" aria-label="Courbe de marée"></svg>
       <div class="tracks">
         <div class="trk surf"><span class="tl">Surf</span><div class="bar" id="barSurf"></div></div>
@@ -287,10 +299,21 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
     <section class="card">
       <h2><span class="sw" style="background:var(--mist)"></span>Conditions</h2>
       <div class="grid3" id="condGrid"></div>
+      <p class="zhint" id="condHint" style="margin-top:8px"></p>
+    </section>
+
+    <section class="card">
+      <h2><span class="sw" style="background:#6EC1F6"></span>Radar pluie en direct</h2>
+      <div class="mapwrap"><div id="radarMap"></div></div>
+      <div class="radbar">
+        <button class="ghost" id="radPlay">▶ Animation</button>
+        <span class="radtime" id="radTime"></span>
+      </div>
+      <p class="zhint">Observation radar réelle (RainViewer, image toutes les 10 min) : ce que les modèles ratent, le radar le montre. Les dernières images marquées «&nbsp;prévision&nbsp;» sont une extrapolation courte.</p>
     </section>
 
     <footer>
-      Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km).
+      Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Prévisions météo : Météo-France AROME/ARPEGE (Open-Meteo). Radar : RainViewer. Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Coefficients <b>estimés</b> à partir du marnage local — valeurs officielles : SHOM / annuaire des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
       Heures locales du spot, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
@@ -310,7 +333,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s);};
-var CACHE_KEY="estran_v2";
+var CACHE_KEY="estran_v3";
 var M=null, W=null, EXT=[], TODAY=0, DAY=0, SURF=[], FISH=[], DRONE=[];
 var state={la:null, lo:null, label:""};
 
@@ -379,11 +402,27 @@ function smoothPath(pts){
   }
   return p;
 }
-function droneFactors(ws,wg,pr,prob){
+function wmoLabel(wc){
+  if(wc==null)return null;
+  if(wc>=95)return {e:"⛈️",l:"Orage"};
+  if(wc>=85)return {e:"🌨️",l:"Averses de neige"};
+  if(wc>=80)return {e:"🌧️",l:"Averses"};
+  if(wc>=71)return {e:"🌨️",l:"Neige"};
+  if(wc>=61)return {e:"🌧️",l:"Pluie"};
+  if(wc>=51)return {e:"🌦️",l:"Bruine"};
+  if(wc>=45)return {e:"🌫️",l:"Brouillard"};
+  if(wc>=3)return {e:"☁️",l:"Couvert"};
+  if(wc>=1)return {e:"🌤️",l:"Éclaircies"};
+  return {e:"☀️",l:"Ciel clair"};
+}
+function droneFactors(ws,wg,pr,prob,wc){
+  if(wc!=null&&wc>=95)return 0;
   var fW=ws==null?0.9:ws<12?1:ws<20?0.85:ws<28?0.55:ws<38?0.25:0.05;
   var fG=wg==null?1:wg<25?1:wg<35?0.8:wg<45?0.45:0.15;
   var fR=1;
   if(pr!=null&&pr>0.1)fR=0.08;
+  else if(wc!=null&&((wc>=61&&wc<=67)||(wc>=80&&wc<=86)))fR=0.15;
+  else if(wc!=null&&wc>=51&&wc<=57)fR=0.4;
   else if(prob!=null){fR=prob>=60?0.45:prob>=30?0.8:1;}
   return fW*fG*fR;
 }
@@ -435,9 +474,15 @@ function widx(i){
 }
 
 /* ---------- scoring ---------- */
+function wcAt(i){
+  var wi=widx(i);
+  if(wi==null||!W.hourly.weather_code)return null;
+  return W.hourly.weather_code[wi];
+}
 function scoreSurfAt(i){
   var t=parseLocal(M.hourly.time[i]);
   var ph=phaseAt(t);if(!ph)return 0;
+  var wcS=wcAt(i);if(wcS!=null&&wcS>=95)return 0;
   var base=100-160*Math.abs(ph.p-0.5);
   if(ph.rising)base+=8;
   base=clamp(base,0,100);
@@ -460,6 +505,7 @@ function scoreSurfAt(i){
 function scoreFishAt(i){
   var t=parseLocal(M.hourly.time[i]);
   var ph=phaseAt(t);if(!ph)return 0;
+  var wcF=wcAt(i);if(wcF!=null&&wcF>=95)return 0;
   var base=ph.rising?(55+35*ph.p):(55-28*ph.p);
   var dPM=Infinity;
   if(ph.prev.type==="PM")dPM=Math.min(dPM,t-ph.prev.t);
@@ -486,7 +532,7 @@ function scoreDroneAt(i){
   var ws=W.hourly.wind_speed_10m[wi], wg=W.hourly.wind_gusts_10m[wi];
   var pr=W.hourly.precipitation?W.hourly.precipitation[wi]:null;
   var prob=W.hourly.precipitation_probability?W.hourly.precipitation_probability[wi]:null;
-  return clamp(Math.round(100*droneFactors(ws,wg,pr,prob)),0,100);
+  return clamp(Math.round(100*droneFactors(ws,wg,pr,prob,wcAt(i))),0,100);
 }
 function buildWindows(scores,i0,i1,thr){
   var wins=[],cur=null;
@@ -661,11 +707,12 @@ function renderHead(dayStart,dayEnd){
 function renderCond(i0){
   var now=new Date();
   var i=i0+12;
+  var live=false;
   if(DAY===0){
     var k=TODAY+Math.floor((now-parseLocal(M.hourly.time[TODAY]))/3600000);
     if(k>=i0&&k<i0+24)i=k;
+    live=!!(W&&W.current&&W.current.wind_speed_10m!=null);
   }
-  var wh=M.hourly.wave_height[i], wp=M.hourly.wave_period[i], wd=M.hourly.wave_direction[i];
   var g=$("#condGrid");g.innerHTML="";
   var tile=function(v,u,d){
     var el=document.createElement("div");
@@ -673,20 +720,41 @@ function renderCond(i0){
     el.innerHTML="<div class='v'>"+v+"</div><div class='u'>"+u+"</div>"+(d?"<div class='d'>"+d+"</div>":"");
     g.appendChild(el);
   };
-  tile(wh!=null?frNum(wh,1)+" m":"—","Vagues",wd!=null?compass(wd):"");
-  tile(wp!=null?frNum(wp,0)+" s":"—","Période","");
+  var wh=M.hourly.wave_height[i], wp=M.hourly.wave_period[i], wd=M.hourly.wave_direction[i];
+  var sst=M.hourly.sea_surface_temperature?M.hourly.sea_surface_temperature[i]:null;
   var wi=widx(i);
-  var ws=null,wdir=null,wg=null,pr=null,prob=null;
-  if(wi!=null){
+  var ws=null,wdir=null,wg=null,pr=null,prob=null,wc=null,air=null;
+  if(live){
+    var c=W.current;
+    ws=c.wind_speed_10m;wdir=c.wind_direction_10m;wg=c.wind_gusts_10m;
+    pr=c.precipitation;wc=c.weather_code;air=c.temperature_2m;
+    if(wi!=null&&W.hourly.precipitation_probability)prob=W.hourly.precipitation_probability[wi];
+  }else if(wi!=null){
     ws=W.hourly.wind_speed_10m[wi];wdir=W.hourly.wind_direction_10m[wi];wg=W.hourly.wind_gusts_10m[wi];
     pr=W.hourly.precipitation?W.hourly.precipitation[wi]:null;
     prob=W.hourly.precipitation_probability?W.hourly.precipitation_probability[wi]:null;
+    wc=W.hourly.weather_code?W.hourly.weather_code[wi]:null;
+    air=W.hourly.temperature_2m?W.hourly.temperature_2m[wi]:null;
   }
+  var wl=wmoLabel(wc);
+  tile(wl?wl.e:"—","Ciel",wl?wl.l:"");
+  tile(air!=null?frNum(air,1)+" °C":"—","Air",live?"en direct":"");
+  tile(sst!=null?frNum(sst,1)+" °C":"—","Eau","");
   tile(ws!=null?frNum(ws,0)+" km/h":"—","Vent",wdir!=null?compass(wdir):"");
   tile(wg!=null?frNum(wg,0)+" km/h":"—","Rafales","");
   tile(pr!=null?frNum(pr,1)+" mm":"—","Pluie",prob!=null?frNum(prob,0)+" %":"");
+  tile(wh!=null?frNum(wh,1)+" m":"—","Vagues",wd!=null?compass(wd):"");
+  tile(wp!=null?frNum(wp,0)+" s":"—","Période","");
   var sr=sunTimes(parseLocal(M.hourly.time[i0]));
   tile(sr?fmtHM(sr.rise):"—","Lever · coucher",sr?fmtHM(sr.set):"");
+  var hint=$("#condHint");
+  if(hint){
+    hint.textContent=live
+      ?"Aujourd'hui : ciel, air, vent, rafales et pluie en direct (AROME, MAJ 10 min) ; eau et vagues : modèle horaire au point en mer."
+      :(DAY===0
+        ?"Heure actuelle, prévision horaire AROME ; eau et vagues au point en mer."
+        :"Prévision à la mi-journée (AROME) ; eau et vagues au point en mer.");
+  }
 }
 
 /* ---------- vent en direct (drone) ---------- */
@@ -695,19 +763,24 @@ function renderDroneNow(){
   var c=W&&W.current;
   if(!c||c.wind_speed_10m==null){el.style.display="none";return;}
   var ws=c.wind_speed_10m, wg=c.wind_gusts_10m, wdir=c.wind_direction_10m, pr=c.precipitation;
-  var cls=(pr!=null&&pr>0.1)?"no":(ws<20&&(wg==null||wg<30))?"ok":(ws<30&&(wg==null||wg<45))?"warn":"no";
-  var verdict=cls==="ok"?"Vol OK":cls==="warn"?"Prudence":(pr!=null&&pr>0.1)?"Pluie — au sol":"Trop de vent";
+  var wc=c.weather_code, wl=wmoLabel(wc);
+  var cls, verdict;
+  if(wc!=null&&wc>=95){cls="no";verdict="Orage — au sol";}
+  else if((pr!=null&&pr>0.1)||(wc!=null&&((wc>=61&&wc<=67)||(wc>=80&&wc<=86)))){cls="no";verdict="Pluie — au sol";}
+  else if(ws<20&&(wg==null||wg<30)){cls="ok";verdict="Vol OK";}
+  else if(ws<30&&(wg==null||wg<45)){cls="warn";verdict="Prudence";}
+  else{cls="no";verdict="Trop de vent";}
   el.style.display="flex";
   el.innerHTML="<span class='wnum "+cls+"'>"+frNum(ws,0)+" km/h</span>"
-    +"<span class='wdet'>"+(wdir!=null?compass(wdir):"")+(wg!=null?" · raf. "+frNum(wg,0)+" km/h":"")+"</span>"
+    +"<span class='wdet'>"+(wl?wl.e+" "+wl.l+" · ":"")+(wdir!=null?compass(wdir):"")+(wg!=null?" · raf. "+frNum(wg,0)+" km/h":"")+"</span>"
     +"<span class='wverdict "+cls+"'>"+verdict+"</span>"
-    +"<span class='wts'>Vent en direct"+(c.time?" · "+fmtHM(parseLocal(c.time)):"")+"</span>";
+    +"<span class='wts'>Vent &amp; ciel en direct (AROME)"+(c.time?" · "+fmtHM(parseLocal(c.time)):"")+"</span>";
 }
 function refreshCurrent(){
   if(state.la==null)return;
-  var u="https://api.open-meteo.com/v1/forecast?latitude="+state.la+"&longitude="+state.lo+"&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m&timezone=auto";
+  var u="https://api.open-meteo.com/v1/forecast?latitude="+state.la+"&longitude="+state.lo+"&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m,weather_code&timezone=auto&models=meteofrance_seamless";
   fetch(u).then(function(r){return r.json();}).then(function(j){
-    if(j&&j.current){if(W)W.current=j.current;renderDroneNow();if(M&&DAY===0)renderSurfTemps(TODAY);}
+    if(j&&j.current){if(W)W.current=j.current;renderDroneNow();if(M&&DAY===0){renderSurfTemps(TODAY);renderCond(TODAY);}}
   }).catch(function(){});
 }
 
@@ -732,6 +805,87 @@ function renderSurfTemps(i0){
     +"<span class='tpill'><small>Air"+(DAY===0?" (direct)":"")+"</small>🌡️ "+(air!=null?frNum(air,1)+" °C":"—")+"</span>";
 }
 
+function renderStorm(i0){
+  var el=$("#stormAlert");if(!el)return;
+  var now=new Date();
+  var cur=W&&W.current;
+  if(DAY===0&&cur&&cur.weather_code!=null&&cur.weather_code>=95){
+    el.style.display="block";
+    el.textContent="⚠️ Orage en cours — surf, pêche et drone : tout le monde au sec.";
+    return;
+  }
+  var first=null;
+  for(var i=i0;i<i0+24;i++){
+    var t=parseLocal(M.hourly.time[i]);
+    if(DAY===0&&t<now)continue;
+    var wc=wcAt(i);
+    if(wc==null)continue;
+    if(wc>=95){first=t;break;}
+  }
+  if(first){
+    el.style.display="block";
+    el.textContent="⚠️ Orage prévu vers "+fmtHM(first)+" (AROME) — prévois de rentrer avant.";
+  }else el.style.display="none";
+}
+
+/* ---------- radar pluie (RainViewer + Leaflet) ---------- */
+var radar={map:null,marker:null,layer:null,frames:[],past:0,idx:0,timer:null,host:""};
+function radarShow(i){
+  if(!radar.map||!radar.frames.length)return;
+  radar.idx=(i+radar.frames.length)%radar.frames.length;
+  var f=radar.frames[radar.idx];
+  var url=radar.host+f.path+"/256/{z}/{x}/{y}/4/1_1.png";
+  var nl=L.tileLayer(url,{opacity:0.7,maxZoom:12});
+  nl.addTo(radar.map);
+  if(radar.layer)radar.map.removeLayer(radar.layer);
+  radar.layer=nl;
+  var tEl=$("#radTime");
+  if(tEl)tEl.textContent=fmtHM(new Date(f.time*1000))+(radar.idx>=radar.past?" (prévision)":"");
+}
+function radarLoad(){
+  fetch("https://api.rainviewer.com/public/weather-maps.json")
+    .then(function(r){return r.json();})
+    .then(function(j){
+      if(!j||!j.radar)return;
+      radar.host=j.host||"https://tilecache.rainviewer.com";
+      var past=j.radar.past||[], nc=j.radar.nowcast||[];
+      radar.frames=past.concat(nc);
+      radar.past=past.length;
+      if(radar.frames.length)radarShow(radar.past-1);
+    }).catch(function(){
+      var tEl=$("#radTime");
+      if(tEl)tEl.textContent="Radar indisponible";
+    });
+}
+function initRadar(){
+  if(!window.L||state.la==null)return;
+  var el=document.getElementById("radarMap");if(!el)return;
+  if(radar.map){
+    radar.map.setView([state.la,state.lo],9);
+    if(radar.marker)radar.marker.setLatLng([state.la,state.lo]);
+    radar.map.invalidateSize();
+    radarLoad();
+    return;
+  }
+  radar.map=L.map("radarMap",{zoomControl:true}).setView([state.la,state.lo],9);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:12,attribution:"© OpenStreetMap · RainViewer"}).addTo(radar.map);
+  radar.marker=L.circleMarker([state.la,state.lo],{radius:6,color:"#49C6D6",fillColor:"#49C6D6",fillOpacity:0.9}).addTo(radar.map);
+  setTimeout(function(){if(radar.map)radar.map.invalidateSize();},200);
+  radarLoad();
+}
+function radarToggle(){
+  var b=$("#radPlay");
+  if(radar.timer){
+    clearInterval(radar.timer);radar.timer=null;
+    if(b)b.textContent="▶ Animation";
+    radarShow(radar.past-1);
+  }else{
+    if(!radar.frames.length)return;
+    radar.timer=setInterval(function(){radarShow(radar.idx+1);},650);
+    if(b)b.textContent="⏸ Pause";
+  }
+}
+
 function renderDay(){
   var i0=TODAY+DAY*24;
   var dayStart=parseLocal(M.hourly.time[i0]);
@@ -744,6 +898,7 @@ function renderDay(){
   renderCond(i0);
   renderDroneNow();
   renderSurfTemps(i0);
+  renderStorm(i0);
 }
 
 /* ---------- data pipeline ---------- */
@@ -761,22 +916,37 @@ function processAll(){
   renderDay();
   if(state.la!=null)renderDroneZone();
   show("#app");
+  setTimeout(initRadar,80);
 }
 
 /* ---------- zone drone (carte DGAC/IGN via Geoplateforme) ---------- */
+var gpz={map:null,marker:null};
+function initGpMap(){
+  if(!window.L||state.la==null)return;
+  var el=document.getElementById("gpMap");if(!el)return;
+  var wmts="https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}";
+  gpz.map=L.map("gpMap",{zoomControl:true}).setView([state.la,state.lo],12);
+  L.tileLayer(wmts+"&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&FORMAT=image/jpeg",
+    {maxZoom:19,attribution:"© IGN / Géoplateforme · carte DGAC"}).addTo(gpz.map);
+  L.tileLayer(wmts+"&LAYER=TRANSPORTS.DRONES.RESTRICTIONS&FORMAT=image/png",
+    {opacity:0.62,maxNativeZoom:15,maxZoom:19}).addTo(gpz.map);
+  gpz.marker=L.circleMarker([state.la,state.lo],
+    {radius:7,color:"#EAF4F4",weight:2,fillColor:"#49C6D6",fillOpacity:1}).addTo(gpz.map);
+  setTimeout(function(){if(gpz.map)gpz.map.invalidateSize();},200);
+}
 function renderDroneZone(){
   var el=$("#droneZone");if(!el)return;
   var la=state.la, lo=state.lo;
-  var emb="https://www.geoportail.gouv.fr/embed/visu.html?c="+lo+","+la
-    +"&z=12&l0=ORTHOIMAGERY.ORTHOPHOTOS::GEOPORTAIL:OGC:WMTS(1;g)"
-    +"&l1=TRANSPORTS.DRONES.RESTRICTIONS::GEOPORTAIL:OGC:WMTS(0.9)&permalink=yes";
   var gp="https://www.geoportail.gouv.fr/carte?c="+lo+","+la+"&z=12&l0=TRANSPORTS.DRONES.RESTRICTIONS::GEOPORTAIL:OGC:WMTS(1)&permalink=yes";
-  var base="<div class='mapwrap'><iframe class='gmap' sandbox='allow-forms allow-scripts allow-same-origin' src='"+emb+"' allowfullscreen loading='lazy' title='Carte des restrictions drones (Geoportail)'></iframe></div>"
+  var base="<div class='mapwrap'><div id='gpMap'></div></div>"
     +"<a class='maplink' target='_blank' rel='noopener' href='"+gp+"'>Ouvrir en grand sur Géoportail</a>"
-    +"<p class='zhint'>Carte loisir 0–120 m (zones colorées = restrictions), hors interdictions temporaires (NOTAM / SUP AIP : sia.aviation-civile.gouv.fr). "
+    +"<p class='zhint'>Le point bleu est ancré sur tes coordonnées GPS : il reste en place quand tu zoomes ou déplaces la carte (fonds officiels IGN, mêmes couches que Géoportail). "
+    +"Carte loisir 0–120 m (zones colorées = restrictions), hors interdictions temporaires (NOTAM / SUP AIP : sia.aviation-civile.gouv.fr). "
     +"Rappels catégorie ouverte : hauteur max 120 m, vol de jour, drone toujours en vue, jamais au-dessus des personnes, "
     +"agglomération interdite en loisir, plages fréquentées = survol de tiers interdit.</p>";
   el.innerHTML="<div class='zstat' id='zstat'>Zone : interrogation de la carte DGAC/IGN…</div>"+base;
+  if(gpz.map){try{gpz.map.remove();}catch(e){}gpz.map=null;gpz.marker=null;}
+  setTimeout(initGpMap,60);
   var d=0.008;
   var bb=(la-d)+","+(lo-d)+","+(la+d)+","+(lo+d);
   var u="https://data.geopf.fr/wms-r/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo"
@@ -836,7 +1006,7 @@ function fetchAll(la,lo,label,silent){
   probeMarine(la,lo).then(function(pt){
     if(!pt)throw new Error("no-tide");
     var mu="https://marine-api.open-meteo.com/v1/marine?latitude="+pt.la+"&longitude="+pt.lo+"&hourly=sea_level_height_msl,wave_height,wave_period,wave_direction,sea_surface_temperature&timezone=auto&past_days=7&forecast_days=8&cell_selection=sea";
-    var wu="https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,temperature_2m&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m&timezone=auto&forecast_days=8";
+    var wu="https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,temperature_2m,weather_code&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m,weather_code&timezone=auto&forecast_days=8&models=meteofrance_seamless";
     return Promise.all([
       fetch(mu).then(function(r){return r.json();}),
       fetch(wu).then(function(r){return r.json();})
@@ -958,6 +1128,7 @@ function doSearch(q){
 /* ---------- init ---------- */
 function init(){
   $("#btnGps").addEventListener("click",function(){locate(false);});
+  $("#radPlay").addEventListener("click",radarToggle);
   $("#btnCam").addEventListener("click",function(){
     var name=(state.label||"").replace(" (approx. IP)","").trim();
     var url=name
