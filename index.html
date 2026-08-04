@@ -317,7 +317,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
     </section>
 
     <footer>
-      Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau : température de surface, modèle Copernicus Marine au point en mer indiqué (l'eau du bord peut différer de 1–2 °C). UV : Copernicus CAMS. Radar : RainViewer. Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
+      Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km via NOAA ERDDAP, MAJ quotidienne, au pixel de mer le plus proche du bord ; en secours et pour J+1 à J+4 : modèle Copernicus Marine au point en mer indiqué. L'étiquette de la tuile Eau précise la source affichée. UV : Copernicus CAMS. Radar : RainViewer. Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Coefficients <b>estimés</b> à partir du marnage local — valeurs officielles : SHOM / annuaire des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
       Heures locales du spot, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
@@ -443,6 +443,19 @@ function uvLabel(v){
   if(v<8)return {l:"\u00e9lev\u00e9",cls:"warn"};
   if(v<11)return {l:"tr\u00e8s \u00e9lev\u00e9",cls:"no"};
   return {l:"extr\u00eame",cls:"no"};
+}
+function pickNearestSST(rows,la,lo){
+  var best=null,bd=Infinity;
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];
+    if(!r||r[3]==null)continue;
+    var v=r[3];
+    if(v>100)v=v-273.15;
+    if(v<-5||v>45)continue;
+    var d=distKm(la,lo,r[1],r[2]);
+    if(d<bd){bd=d;best={v:v,dist:d,day:(typeof r[0]==="string"?r[0].slice(0,10):"")};}
+  }
+  return best;
 }
 function probeCandidates(la,lo){
   var c=[[la,lo]];
@@ -802,6 +815,26 @@ function refreshCurrent(){
   }).catch(function(){});
 }
 
+function fetchSSTsat(){
+  if(state.la==null)return;
+  var la=state.la, lo=state.lo, d=0.06;
+  var u="https://coastwatch.pfeg.noaa.gov/erddap/griddap/jplMURSST41.json?analysed_sst%5B(last)%5D%5B("+(la-d)+"):("+(la+d)+")%5D%5B("+(lo-d)+"):("+(lo+d)+")%5D";
+  fetch(u).then(function(r){
+    if(!r.ok)throw new Error("http");
+    return r.json();
+  }).then(function(j){
+    var rows=(j&&j.table&&j.table.rows)||[];
+    var best=pickNearestSST(rows,la,lo);
+    if(best){
+      state.sst=best;
+      if(M)renderSurfTemps(TODAY+DAY*24);
+      try{
+        var c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");
+        if(c){c.sst=best;localStorage.setItem(CACHE_KEY,JSON.stringify(c));}
+      }catch(e){}
+    }
+  }).catch(function(){});
+}
 function renderSurfTemps(i0){
   var el=$("#surfTemps");if(!el)return;
   var now=new Date();
@@ -836,9 +869,19 @@ function renderSurfTemps(i0){
   var ul=uvLabel(uv);
   var dist=null;
   if(state.mla!=null&&state.la!=null)dist=distKm(state.la,state.lo,state.mla,state.mlo);
-  if(sst==null&&air==null&&uv==null){el.style.display="none";return;}
+  var eauVal=null, eauLbl="Eau", eauTitle="";
+  if(DAY===0&&state.sst&&state.sst.v!=null){
+    eauVal=state.sst.v;
+    eauLbl="Eau · sat. 1 km"+(state.sst.dist>=2?" · à "+frNum(state.sst.dist,0)+" km":"");
+    eauTitle="Analyse satellite NASA/JPL MUR du "+state.sst.day;
+  }else if(sst!=null){
+    eauVal=sst;
+    eauLbl="Eau · modèle"+(dist!=null&&dist>=2?" · à "+frNum(dist,0)+" km":"");
+    eauTitle="Modèle Copernicus Marine au point en mer";
+  }
+  if(eauVal==null&&air==null&&uv==null){el.style.display="none";return;}
   el.style.display="flex";
-  el.innerHTML="<span class='tpill'><small>Eau"+(dist!=null&&dist>=2?" · à "+frNum(dist,0)+" km":"")+"</small>🌊 "+(sst!=null?frNum(sst,1)+" °C":"—")+"</span>"
+  el.innerHTML="<span class='tpill' title='"+eauTitle+"'><small>"+eauLbl+"</small>🌊 "+(eauVal!=null?frNum(eauVal,1)+" °C":"—")+"</span>"
     +"<span class='tpill'><small>Air"+(DAY===0?" (direct)":"")+"</small>🌡️ "+(air!=null?frNum(air,1)+" °C":"—")+"</span>"
     +"<span class='tpill'><small>UV"+(uvMax?" max jour":"")+"</small>"+(ul?"<span class='uv"+ul.cls+"'>☀️ "+frNum(uv,0)+" · "+ul.l+"</span>":"—")+"</span>";
 }
@@ -1060,6 +1103,8 @@ function fetchAll(la,lo,label,silent){
       $("#locName").textContent=state.label;
       try{localStorage.setItem(CACHE_KEY,JSON.stringify({la:la,lo:lo,mla:pt.la,mlo:pt.lo,label:state.label,at:Date.now(),M:m,W:w}));}catch(e){}
       processAll();
+      state.sst=null;
+      fetchSSTsat();
       if(silent)toast("Données actualisées");
     });
   }).catch(function(err){
@@ -1096,7 +1141,7 @@ function gpsHardFail(silent,why){
   if(silent)return;
   var c=null;
   try{c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");}catch(e){}
-  if(c&&c.M){M=c.M;W=c.W;state.la=c.la;state.lo=c.lo;state.label=c.label;
+  if(c&&c.M){M=c.M;W=c.W;state.la=c.la;state.lo=c.lo;state.mla=c.mla;state.mlo=c.mlo;state.label=c.label;state.sst=c.sst||null;
     $("#locName").textContent=c.label;processAll();toast(why);return;}
   $("#errMsg").textContent=why+" Tu peux aussi chercher un spot manuellement.";
   show("#err");
@@ -1197,7 +1242,7 @@ function init(){
   var c=null;
   try{c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");}catch(e){}
   if(c&&c.M&&(Date.now()-c.at)<6*3600000){
-    M=c.M;W=c.W;state.la=c.la;state.lo=c.lo;state.label=c.label;
+    M=c.M;W=c.W;state.la=c.la;state.lo=c.lo;state.mla=c.mla;state.mlo=c.mlo;state.label=c.label;state.sst=c.sst||null;
     $("#locName").textContent=c.label||"Dernier spot";
     processAll();
     locate(true);
