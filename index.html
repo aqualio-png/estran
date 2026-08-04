@@ -157,6 +157,11 @@ table.tides tr:first-child td{border-top:none}
 .radbar{display:flex; align-items:center; gap:12px; margin:2px 0 8px}
 .radbar .ghost{margin-top:0; padding:8px 16px}
 .radtime{color:var(--mist); font-family:"Spline Sans Mono",monospace; font-size:12.5px}
+.rnt{color:var(--mist); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; margin:10px 0 4px}
+.rn{display:flex; align-items:flex-end; gap:2px; height:54px}
+.rn .b{flex:1; border-radius:3px 3px 0 0; min-height:2px}
+.rnl{display:flex; gap:2px; margin-top:3px}
+.rnl span{flex:1; text-align:center; color:var(--mist); font-size:9px; font-family:"Spline Sans Mono",monospace}
 #gpMap{height:320px; background:var(--deep)}
 /* states */
 #loading,#err{padding:60px 20px; text-align:center; color:var(--mist)}
@@ -313,6 +318,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
         <button class="ghost" id="radPlay">▶ Animation</button>
         <span class="radtime" id="radTime"></span>
       </div>
+      <div id="rainNext"></div>
       <p class="zhint">Observation radar réelle (RainViewer, image toutes les 10 min) : ce que les modèles ratent, le radar le montre. Les dernières images marquées «&nbsp;prévision&nbsp;» sont une extrapolation courte.</p>
     </section>
 
@@ -916,7 +922,7 @@ function radarShow(i){
   radar.idx=(i+radar.frames.length)%radar.frames.length;
   var f=radar.frames[radar.idx];
   var url=radar.host+f.path+"/256/{z}/{x}/{y}/4/1_1.png";
-  var nl=L.tileLayer(url,{opacity:0.7,maxZoom:12});
+  var nl=L.tileLayer(url,{opacity:0.7,maxNativeZoom:7,maxZoom:11});
   nl.addTo(radar.map);
   if(radar.layer)radar.map.removeLayer(radar.layer);
   radar.layer=nl;
@@ -942,14 +948,14 @@ function initRadar(){
   if(!window.L||state.la==null)return;
   var el=document.getElementById("radarMap");if(!el)return;
   if(radar.map){
-    radar.map.setView([state.la,state.lo],9);
+    radar.map.setView([state.la,state.lo],7);
     if(radar.marker)radar.marker.setLatLng([state.la,state.lo]);
     radar.map.invalidateSize();
     radarLoad();
     return;
   }
-  radar.map=L.map("radarMap",{zoomControl:true}).setView([state.la,state.lo],9);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:12,attribution:"© OpenStreetMap · RainViewer"}).addTo(radar.map);
+  radar.map=L.map("radarMap",{zoomControl:true,maxZoom:11}).setView([state.la,state.lo],7);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:11,attribution:"© OpenStreetMap · RainViewer"}).addTo(radar.map);
   radar.marker=L.circleMarker([state.la,state.lo],{radius:6,color:"#49C6D6",fillColor:"#49C6D6",fillOpacity:0.9}).addTo(radar.map);
   setTimeout(function(){if(radar.map)radar.map.invalidateSize();},200);
   radarLoad();
@@ -967,6 +973,38 @@ function radarToggle(){
   }
 }
 
+function renderRainNext(){
+  var el=$("#rainNext");if(!el||!M||!W)return;
+  var now=new Date();
+  var k=TODAY+Math.floor((now-parseLocal(M.hourly.time[TODAY]))/3600000);
+  var n=12, vals=[], hrs=[], any=false, maxmm=0.6;
+  for(var q=0;q<n;q++){
+    var idx=k+q;
+    if(idx>=M.hourly.time.length)break;
+    var wi=widx(idx);
+    var v=(wi!=null&&W.hourly.precipitation&&wi<W.hourly.precipitation.length)?W.hourly.precipitation[wi]:null;
+    if(v==null)v=0;
+    if(v>0.05)any=true;
+    if(v>maxmm)maxmm=v;
+    vals.push(v);
+    hrs.push(fmtHM(parseLocal(M.hourly.time[idx])).slice(0,3));
+  }
+  var head="<div class='rnt'>Ensuite — pluie prévue sur 12 h au point GPS (AROME)</div>";
+  if(!any){
+    el.innerHTML=head+"<p class='zhint' style='margin:0'>Pas de pluie prévue dans les 12 prochaines heures.</p>";
+    return;
+  }
+  var bars="", labels="";
+  for(var q2=0;q2<vals.length;q2++){
+    var v2=vals[q2];
+    var h=Math.max(4,Math.round(v2/maxmm*100));
+    var col=v2<=0.05?"rgba(110,193,246,.14)":v2<0.5?"#8FD0F8":v2<2?"#4EA3E8":"#2A6FD6";
+    bars+="<div class='b' style='height:"+h+"%;background:"+col+"' title='"+hrs[q2]+" : "+frNum(v2,1)+" mm'></div>";
+    labels+="<span>"+(q2%3===0?hrs[q2]:"")+"</span>";
+  }
+  el.innerHTML=head+"<div class='rn'>"+bars+"</div><div class='rnl'>"+labels+"</div>";
+}
+
 function renderDay(){
   var i0=TODAY+DAY*24;
   var dayStart=parseLocal(M.hourly.time[i0]);
@@ -980,6 +1018,7 @@ function renderDay(){
   renderDroneNow();
   renderSurfTemps(i0);
   renderStorm(i0);
+  renderRainNext();
 }
 
 /* ---------- data pipeline ---------- */
