@@ -374,7 +374,10 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s);};
-var CACHE_KEY="estran_v4";
+var CACHE_KEY="estran_v5";
+var TZ="auto";
+try{var _z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(_z)TZ=_z;}catch(e){}
+var TZQ=encodeURIComponent(TZ);
 var M=null, W=null, EXT=[], TODAY=0, DAY=0, SURF=[], FISH=[], DRONE=[];
 var state={la:null, lo:null, label:""};
 
@@ -873,7 +876,7 @@ function renderDroneNow(){
 }
 function refreshCurrent(){
   if(state.la==null)return;
-  var u="https://api.open-meteo.com/v1/forecast?latitude="+state.la+"&longitude="+state.lo+"&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m,weather_code&timezone=auto&models=meteofrance_seamless";
+  var u="https://api.open-meteo.com/v1/forecast?latitude="+state.la+"&longitude="+state.lo+"&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m,weather_code&timezone="+TZQ+"&models=meteofrance_seamless";
   fetch(u).then(function(r){return r.json();}).then(function(j){
     if(j&&j.current){if(W)W.current=j.current;renderDroneNow();if(M&&DAY===0){renderSurfTemps(TODAY);renderCond(TODAY);}}
   }).catch(function(){});
@@ -1242,7 +1245,7 @@ function probeMarine(la,lo){
   var cands=probeCandidates(la,lo);
   var las=cands.map(function(c){return c[0].toFixed(4);}).join(",");
   var los=cands.map(function(c){return c[1].toFixed(4);}).join(",");
-  var u="https://marine-api.open-meteo.com/v1/marine?latitude="+las+"&longitude="+los+"&hourly=sea_level_height_msl&forecast_days=1&timezone=auto&cell_selection=sea";
+  var u="https://marine-api.open-meteo.com/v1/marine?latitude="+las+"&longitude="+los+"&hourly=sea_level_height_msl&forecast_days=1&timezone="+TZQ+"&cell_selection=sea";
   return fetch(u).then(function(r){return r.json();}).then(function(arr){
     if(!Array.isArray(arr))arr=[arr];
     for(var i=0;i<arr.length&&i<cands.length;i++){
@@ -1261,9 +1264,9 @@ function fetchAll(la,lo,label,silent){
   if(!silent)show("#loading");
   probeMarine(la,lo).then(function(pt){
     if(!pt)throw new Error("no-tide");
-    var mu="https://marine-api.open-meteo.com/v1/marine?latitude="+pt.la+"&longitude="+pt.lo+"&hourly=sea_level_height_msl,wave_height,wave_period,wave_direction,sea_surface_temperature&timezone=auto&past_days=7&forecast_days=8&cell_selection=sea";
-    var wu="https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,temperature_2m,weather_code&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m,weather_code&timezone=auto&forecast_days=8&models=meteofrance_seamless";
-    var uu="https://air-quality-api.open-meteo.com/v1/air-quality?latitude="+la+"&longitude="+lo+"&hourly=uv_index&timezone=auto&forecast_days=7";
+    var mu="https://marine-api.open-meteo.com/v1/marine?latitude="+pt.la+"&longitude="+pt.lo+"&hourly=sea_level_height_msl,wave_height,wave_period,wave_direction,sea_surface_temperature&timezone="+TZQ+"&past_days=7&forecast_days=8&cell_selection=sea";
+    var wu="https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,temperature_2m,weather_code&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m,weather_code&timezone="+TZQ+"&forecast_days=8&models=meteofrance_seamless";
+    var uu="https://air-quality-api.open-meteo.com/v1/air-quality?latitude="+la+"&longitude="+lo+"&hourly=uv_index&timezone="+TZQ+"&forecast_days=7";
     return Promise.all([
       fetch(mu).then(function(r){return r.json();}),
       fetch(wu).then(function(r){return r.json();}),
