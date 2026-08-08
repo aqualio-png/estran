@@ -162,6 +162,20 @@ table.tides tr:first-child td{border-top:none}
 .rn .b{flex:1; border-radius:3px 3px 0 0; min-height:2px}
 .rnl{display:flex; gap:2px; margin-top:3px}
 .rnl span{flex:1; text-align:center; color:var(--mist); font-size:9px; font-family:"Spline Sans Mono",monospace}
+.cmprow{display:flex; gap:8px; margin-top:11px}
+.cmp{
+  flex:1; text-align:center; background:var(--panel2); border:1px solid var(--line);
+  color:var(--foam); border-radius:10px; padding:9px 8px; font-size:13px; font-weight:600;
+  text-decoration:none;
+}
+button.cmp{cursor:pointer; font-family:inherit}
+.calrow{display:flex; gap:8px; margin-top:8px}
+.callbl{flex:1; display:flex; flex-direction:column; gap:4px; color:var(--mist); font-size:11px; letter-spacing:.06em; text-transform:uppercase}
+.callbl input{
+  background:var(--deep); border:1px solid var(--line); border-radius:10px;
+  padding:10px 12px; color:var(--foam); font-size:16px; font-family:"Spline Sans Mono",monospace; outline:none; width:100%;
+}
+.callbl input:focus{border-color:var(--surf)}
 #gpMap{height:320px; background:var(--deep)}
 /* states */
 #loading,#err{padding:60px 20px; text-align:center; color:var(--mist)}
@@ -303,6 +317,23 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
     <section class="card">
       <h2><span class="sw" style="background:var(--sand)"></span>Marées du jour</h2>
       <table class="tides"><tbody id="tideRows"></tbody></table>
+      <div class="cmprow">
+        <a class="cmp" href="https://maree.shom.fr" target="_blank" rel="noopener">SHOM officiel</a>
+        <a class="cmp" id="lnkMaree" href="#">marée.info</a>
+      </div>
+      <div class="cmprow"><button class="cmp" id="btnCal" style="width:100%">⚙ Caler sur les valeurs officielles</button></div>
+      <div id="calPanel" style="display:none">
+        <p class="zhint" style="margin-top:10px">1. Ouvre marée.info ci-dessus · 2. Note la <b>prochaine pleine mer officielle</b> · 3. Saisis-la ici :</p>
+        <div class="calrow">
+          <label class="callbl">Heure PM officielle<input type="time" id="calTime"></label>
+          <label class="callbl">Coef officiel (option)<input type="number" id="calCoef" min="20" max="120" inputmode="numeric" placeholder="ex : 87"></label>
+        </div>
+        <div class="cmprow">
+          <button class="cmp" id="calApply" style="background:var(--sand);color:var(--deep);border-color:var(--sand)">Appliquer</button>
+          <button class="cmp" id="calCancel">Annuler</button>
+        </div>
+      </div>
+      <p class="zhint" id="calStatus" style="display:none;margin-top:9px"></p>
     </section>
 
     <section class="card">
@@ -324,7 +355,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
 
     <footer>
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km via NOAA ERDDAP, MAJ quotidienne, au pixel de mer le plus proche du bord ; en secours et pour J+1 à J+4 : modèle Copernicus Marine au point en mer indiqué. L'étiquette de la tuile Eau précise la source affichée. UV : Copernicus CAMS. Radar : RainViewer. Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
-      Coefficients <b>estimés</b> à partir du marnage local — valeurs officielles : SHOM / annuaire des marées.
+      Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
       Heures locales du spot, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
@@ -369,8 +400,25 @@ function computeExtrema(times,levels){
     if(y0==null||y1==null||y2==null)continue;
     var isMax=(y1>=y0&&y1>y2), isMin=(y1<=y0&&y1<y2);
     if(!isMax&&!isMin)continue;
-    var a=(y0+y2)/2-y1, b=(y2-y0)/2, dx=0, yv=y1;
-    if(Math.abs(a)>1e-9){dx=clamp(-b/(2*a),-1,1);yv=y1+b*dx+a*dx*dx;}
+    var dx=0, yv=y1, done=false;
+    if(i>=2&&i<levels.length-2&&levels[i-2]!=null&&levels[i+2]!=null){
+      var ym2=levels[i-2],yp2=levels[i+2];
+      var Sy=ym2+y0+y1+y2+yp2;
+      var Sxy=-2*ym2-y0+y2+2*yp2;
+      var Sx2y=4*ym2+y0+y2+4*yp2;
+      var A=(5*Sx2y-10*Sy)/70;
+      var B=Sxy/10;
+      var C=(34*Sy-10*Sx2y)/70;
+      if(Math.abs(A)>1e-9){
+        dx=clamp(-B/(2*A),-1.5,1.5);
+        yv=C+B*dx+A*dx*dx;
+        done=true;
+      }
+    }
+    if(!done){
+      var a=(y0+y2)/2-y1, b=(y2-y0)/2;
+      if(Math.abs(a)>1e-9){dx=clamp(-b/(2*a),-1,1);yv=y1+b*dx+a*dx*dx;}
+    }
     ext.push({t:new Date(parseLocal(times[i]).getTime()+dx*3600000),h:yv,type:(isMax?"PM":"BM")});
   }
   var out=[];
@@ -469,6 +517,14 @@ function probeCandidates(la,lo){
     c.push([la,lo-d],[la,lo+d],[la-d,lo],[la+d,lo],[la-d,lo-d],[la-d,lo+d],[la+d,lo-d],[la+d,lo+d]);
   });
   return c;
+}
+function calDelta(pmMs,offMs){
+  var best=null;
+  for(var d=-1;d<=1;d++){
+    var diff=(offMs+d*86400000)-pmMs;
+    if(best==null||Math.abs(diff)<Math.abs(best))best=diff;
+  }
+  return best;
 }
 /* ==================== /PURE ==================== */
 
@@ -615,8 +671,9 @@ function renderCurve(i0){
   if(mx-mn<0.2){mx+=0.1;mn-=0.1;}
   var X=function(h){return PADX+(h/24)*(VW-2*PADX);};
   var Y=function(v){return PADT+(1-(v-mn)/(mx-mn))*(VH-PADT-PADB);};
+  var sh=CAL.on?CAL.dt/60:0;
   var pts=[];
-  for(var k2=0;k2<n;k2++)pts.push([X(k2),Y(lv[k2])]);
+  for(var k2=0;k2<n;k2++)pts.push([X(k2+sh),Y(lv[k2])]);
   var path=smoothPath(pts);
   var area=path+"L"+X(24).toFixed(1)+","+VH+"L"+X(0).toFixed(1)+","+VH+"Z";
   var s="";
@@ -642,9 +699,10 @@ function renderCurve(i0){
     var hN=(now-dayStart)/3600000;
     var nx=X(hN);
     s+="<line x1='"+nx.toFixed(1)+"' y1='"+PADT+"' x2='"+nx.toFixed(1)+"' y2='"+VH+"' stroke='#EAF4F4' stroke-width='1' stroke-dasharray='3 3' opacity='0.55'/>";
-    var iN=Math.floor(hN);
+    var hM=hN-sh;
+    var iN=Math.floor(hM);
     if(iN>=0&&iN<24){
-      var vN=lv[iN]+(lv[iN+1]-lv[iN])*(hN-iN);
+      var vN=lv[iN]+(lv[iN+1]-lv[iN])*(hM-iN);
       var cyN=Y(vN);
       s+="<circle cx='"+nx.toFixed(1)+"' cy='"+cyN.toFixed(1)+"' r='7.5' fill='#49C6D6' opacity='0.25'/>";
       s+="<circle cx='"+nx.toFixed(1)+"' cy='"+cyN.toFixed(1)+"' r='4.2' fill='#49C6D6' stroke='#EAF4F4' stroke-width='1.4'/>";
@@ -1005,6 +1063,76 @@ function renderRainNext(){
   el.innerHTML=head+"<div class='rn'>"+bars+"</div><div class='rnl'>"+labels+"</div>";
 }
 
+/* ---------- calage local sur les valeurs officielles ---------- */
+var CAL={dt:0,dc:0,on:false};
+function calKey(){return (Math.round(state.la*10)/10)+","+(Math.round(state.lo*10)/10);}
+function loadCal(){
+  CAL={dt:0,dc:0,on:false};
+  if(state.la==null)return;
+  try{
+    var all=JSON.parse(localStorage.getItem("estran_cal")||"{}");
+    var c=all[calKey()];
+    if(c&&typeof c.dt==="number")CAL={dt:c.dt,dc:c.dc||0,on:true};
+  }catch(e){}
+}
+function saveCal(dt,dc){
+  try{
+    var all=JSON.parse(localStorage.getItem("estran_cal")||"{}");
+    all[calKey()]={dt:dt,dc:dc,at:Date.now()};
+    localStorage.setItem("estran_cal",JSON.stringify(all));
+  }catch(e){}
+}
+function clearCal(){
+  try{
+    var all=JSON.parse(localStorage.getItem("estran_cal")||"{}");
+    delete all[calKey()];
+    localStorage.setItem("estran_cal",JSON.stringify(all));
+  }catch(e){}
+}
+function renderCalStatus(){
+  var el=$("#calStatus");if(!el)return;
+  if(CAL.on){
+    el.style.display="block";
+    var sdt=(CAL.dt>=0?"+":"−")+Math.abs(CAL.dt)+" min";
+    var sdc=CAL.dc?(" · coef "+(CAL.dc>0?"+":"−")+Math.abs(CAL.dc)):"";
+    el.innerHTML="✓ Calé sur l'officiel pour ce spot ("+sdt+sdc+") — <a href='#' id='calReset' style='color:var(--surf)'>réinitialiser</a>";
+    var r=$("#calReset");
+    if(r)r.addEventListener("click",function(ev){
+      ev.preventDefault();clearCal();processAll();toast("Calage supprimé — retour au modèle");
+    });
+  }else el.style.display="none";
+}
+function applyCal(){
+  var tv=$("#calTime").value;
+  if(!tv||!M){toast("Saisis l'heure de la pleine mer officielle");return;}
+  var parts=tv.split(":");
+  var now=new Date();
+  var off=new Date(now.getFullYear(),now.getMonth(),now.getDate(),+parts[0],+parts[1]);
+  var best=null,bd=null;
+  for(var i=0;i<EXT.length;i++){
+    var e=EXT[i];
+    if(e.type!=="PM")continue;
+    if(Math.abs(e.t-now)>36*3600000)continue;
+    var rawMs=e.t.getTime()-(CAL.on?CAL.dt*60000:0);
+    var d=calDelta(rawMs,off.getTime());
+    if(bd==null||Math.abs(d)<Math.abs(bd)){bd=d;best=e;}
+  }
+  if(best==null||Math.abs(bd)>120*60000){
+    toast("Écart de plus de 2 h avec la pleine mer du modèle — vérifie l'heure saisie");
+    return;
+  }
+  var dt=Math.round(bd/60000);
+  var dc=0, cv=parseInt($("#calCoef").value,10);
+  if(!isNaN(cv)&&best.coef!=null){
+    var rawCoef=best.coef-(CAL.on?CAL.dc:0);
+    dc=clamp(cv-rawCoef,-30,30);
+  }
+  saveCal(dt,dc);
+  $("#calPanel").style.display="none";
+  processAll();
+  toast("Calage appliqué : "+(dt>=0?"+":"−")+Math.abs(dt)+" min"+(dc?" · coef "+(dc>0?"+":"−")+Math.abs(dc):""));
+}
+
 function renderDay(){
   var i0=TODAY+DAY*24;
   var dayStart=parseLocal(M.hourly.time[i0]);
@@ -1019,12 +1147,20 @@ function renderDay(){
   renderSurfTemps(i0);
   renderStorm(i0);
   renderRainNext();
+  renderCalStatus();
 }
 
 /* ---------- data pipeline ---------- */
 function processAll(){
   EXT=computeExtrema(M.hourly.time,M.hourly.sea_level_height_msl);
   attachCoefs(EXT);
+  loadCal();
+  if(CAL.on){
+    for(var ci=0;ci<EXT.length;ci++){
+      EXT[ci].t=new Date(EXT[ci].t.getTime()+CAL.dt*60000);
+      if(EXT[ci].coef!=null)EXT[ci].coef=clamp(EXT[ci].coef+CAL.dc,20,120);
+    }
+  }
   var now=new Date();
   TODAY=M.hourly.time.indexOf(isoDate(now)+"T00:00");
   if(TODAY<0)TODAY=7*24;
@@ -1254,6 +1390,20 @@ function doSearch(q){
 function init(){
   $("#btnGps").addEventListener("click",function(){locate(false);});
   $("#radPlay").addEventListener("click",radarToggle);
+  $("#btnCal").addEventListener("click",function(){
+    var pn=$("#calPanel");
+    pn.style.display=(pn.style.display==="none"?"block":"none");
+  });
+  $("#calCancel").addEventListener("click",function(){$("#calPanel").style.display="none";});
+  $("#calApply").addEventListener("click",applyCal);
+  $("#lnkMaree").addEventListener("click",function(ev){
+    ev.preventDefault();
+    var name=(state.label||"").replace(" (approx. IP)","").trim();
+    var url=name
+      ?"https://www.google.com/search?q="+encodeURIComponent("maree.info "+name)
+      :"https://maree.info";
+    window.open(url,"_blank","noopener");
+  });
   $("#btnCam").addEventListener("click",function(){
     var name=(state.label||"").replace(" (approx. IP)","").trim();
     var url=name
