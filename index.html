@@ -49,6 +49,7 @@ header{
 }
 .locpill .name{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600}
 .locpill .dot{width:8px; height:8px; border-radius:50%; background:var(--surf); flex:none; box-shadow:0 0 8px var(--surf)}
+.locpill .dot.approx{background:var(--peche); box-shadow:0 0 8px var(--peche)}
 .iconbtn{
   flex:none; width:40px; height:40px; border-radius:50%;
   background:var(--panel2); border:1px solid var(--line); color:var(--foam);
@@ -245,7 +246,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche du bord</p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v19</b></p>
     </div>
   </header>
 
@@ -323,7 +324,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
       </div>
       <div class="cmprow"><button class="cmp" id="btnCal" style="width:100%">⚙ Caler sur les valeurs officielles</button></div>
       <div id="calPanel" style="display:none">
-        <p class="zhint" style="margin-top:10px">1. Ouvre marée.info ci-dessus · 2. Note la <b>prochaine pleine mer officielle</b> · 3. Saisis-la ici :</p>
+        <p class="zhint" style="margin-top:10px">1. Ouvre marée.info ci-dessus · 2. Note une <b>pleine mer officielle du jour</b> (+ son coef) · 3. Saisis-la ici :</p>
         <div class="calrow">
           <label class="callbl">Heure PM officielle<input type="time" id="calTime"></label>
           <label class="callbl">Coef officiel (option)<input type="number" id="calCoef" min="20" max="120" inputmode="numeric" placeholder="ex : 87"></label>
@@ -332,6 +333,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
           <button class="cmp" id="calApply" style="background:var(--sand);color:var(--deep);border-color:var(--sand)">Appliquer</button>
           <button class="cmp" id="calCancel">Annuler</button>
         </div>
+        <p class="zhint" id="calMsg" style="display:none;margin-top:8px;color:#F2A99B"></p>
       </div>
       <p class="zhint" id="calStatus" style="display:none;margin-top:9px"></p>
     </section>
@@ -357,7 +359,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km via NOAA ERDDAP, MAJ quotidienne, au pixel de mer le plus proche du bord ; en secours et pour J+1 à J+4 : modèle Copernicus Marine au point en mer indiqué. L'étiquette de la tuile Eau précise la source affichée. UV : Copernicus CAMS. Radar : RainViewer. Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Heures locales du spot, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v19</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -520,6 +522,21 @@ function probeCandidates(la,lo){
     c.push([la,lo-d],[la,lo+d],[la-d,lo],[la+d,lo],[la-d,lo-d],[la-d,lo+d],[la+d,lo-d],[la+d,lo+d]);
   });
   return c;
+}
+function calBestMatch(pmsMs,offMs){
+  var best=null,i,d;
+  for(i=0;i<pmsMs.length;i++){
+    d=offMs-pmsMs[i];
+    if(Math.abs(d)<=180*60000&&(best==null||Math.abs(d)<Math.abs(best.d)))best={d:d,i:i};
+  }
+  if(best)return best;
+  for(i=0;i<pmsMs.length;i++){
+    for(var sgn=-1;sgn<=1;sgn+=2){
+      d=offMs+sgn*86400000-pmsMs[i];
+      if(Math.abs(d)<=180*60000&&(best==null||Math.abs(d)<Math.abs(best.d)))best={d:d,i:i};
+    }
+  }
+  return best;
 }
 function calDelta(pmMs,offMs){
   var best=null;
@@ -1051,19 +1068,16 @@ function renderRainNext(){
     hrs.push(fmtHM(parseLocal(M.hourly.time[idx])).slice(0,3));
   }
   var head="<div class='rnt'>Ensuite — pluie prévue sur 12 h au point GPS (AROME)</div>";
-  if(!any){
-    el.innerHTML=head+"<p class='zhint' style='margin:0'>Pas de pluie prévue dans les 12 prochaines heures.</p>";
-    return;
-  }
   var bars="", labels="";
   for(var q2=0;q2<vals.length;q2++){
     var v2=vals[q2];
     var h=Math.max(4,Math.round(v2/maxmm*100));
-    var col=v2<=0.05?"rgba(110,193,246,.14)":v2<0.5?"#8FD0F8":v2<2?"#4EA3E8":"#2A6FD6";
+    var col=v2<=0.05?"rgba(110,193,246,.16)":v2<0.5?"#8FD0F8":v2<2?"#4EA3E8":"#2A6FD6";
     bars+="<div class='b' style='height:"+h+"%;background:"+col+"' title='"+hrs[q2]+" : "+frNum(v2,1)+" mm'></div>";
     labels+="<span>"+(q2%3===0?hrs[q2]:"")+"</span>";
   }
-  el.innerHTML=head+"<div class='rn'>"+bars+"</div><div class='rnl'>"+labels+"</div>";
+  var dry=any?"":"<p class='zhint' style='margin:6px 0 0'>Pas de pluie prévue dans les 12 prochaines heures.</p>";
+  el.innerHTML=head+"<div class='rn'>"+bars+"</div><div class='rnl'>"+labels+"</div>"+dry;
 }
 
 /* ---------- calage local sur les valeurs officielles ---------- */
@@ -1075,13 +1089,13 @@ function loadCal(){
   try{
     var all=JSON.parse(localStorage.getItem("estran_cal")||"{}");
     var c=all[calKey()];
-    if(c&&typeof c.dt==="number")CAL={dt:c.dt,dc:c.dc||0,on:true};
+    if(c&&typeof c.dt==="number")CAL={dt:c.dt,dc:c.dc||0,pm:c.pm||"",off:c.off||"",on:true};
   }catch(e){}
 }
-function saveCal(dt,dc){
+function saveCal(dt,dc,pm,off){
   try{
     var all=JSON.parse(localStorage.getItem("estran_cal")||"{}");
-    all[calKey()]={dt:dt,dc:dc,at:Date.now()};
+    all[calKey()]={dt:dt,dc:dc,pm:pm||"",off:off||"",at:Date.now()};
     localStorage.setItem("estran_cal",JSON.stringify(all));
   }catch(e){}
 }
@@ -1098,39 +1112,56 @@ function renderCalStatus(){
     el.style.display="block";
     var sdt=(CAL.dt>=0?"+":"−")+Math.abs(CAL.dt)+" min";
     var sdc=CAL.dc?(" · coef "+(CAL.dc>0?"+":"−")+Math.abs(CAL.dc)):"";
-    el.innerHTML="✓ Calé sur l'officiel pour ce spot ("+sdt+sdc+") — <a href='#' id='calReset' style='color:var(--surf)'>réinitialiser</a>";
+    var det=(CAL.pm&&CAL.off)?(" · PM "+CAL.pm+" → "+CAL.off):"";
+    el.innerHTML="✓ Calé sur l'officiel pour ce spot ("+sdt+sdc+det+") — <a href='#' id='calReset' style='color:var(--surf)'>réinitialiser</a>";
     var r=$("#calReset");
     if(r)r.addEventListener("click",function(ev){
       ev.preventDefault();clearCal();processAll();toast("Calage supprimé — retour au modèle");
     });
   }else el.style.display="none";
 }
+function calFail(msg){
+  var m=$("#calMsg");
+  if(m){m.style.display="block";m.textContent=msg;}
+  toast(msg);
+}
 function applyCal(){
+  var m=$("#calMsg");
+  if(m)m.style.display="none";
   var tv=$("#calTime").value;
-  if(!tv||!M){toast("Saisis l'heure de la pleine mer officielle");return;}
+  if(!tv||!M){calFail("Saisis d'abord l'heure de la pleine mer officielle (champ Heure PM).");return;}
   var parts=tv.split(":");
   var now=new Date();
   var off=new Date(now.getFullYear(),now.getMonth(),now.getDate(),+parts[0],+parts[1]);
-  var best=null,bd=null;
+  var cands=[],raws=[];
   for(var i=0;i<EXT.length;i++){
     var e=EXT[i];
     if(e.type!=="PM")continue;
     if(Math.abs(e.t-now)>36*3600000)continue;
-    var rawMs=e.t.getTime()-(CAL.on?CAL.dt*60000:0);
-    var d=calDelta(rawMs,off.getTime());
-    if(bd==null||Math.abs(d)<Math.abs(bd)){bd=d;best=e;}
+    cands.push(e);
+    raws.push(e.t.getTime()-(CAL.on?CAL.dt*60000:0));
   }
-  if(best==null||Math.abs(bd)>120*60000){
-    toast("Écart de plus de 2 h avec la pleine mer du modèle — vérifie l'heure saisie");
+  if(!cands.length){calFail("Pas de pleine mer du modèle à comparer — recharge les données (↻) puis réessaie.");return;}
+  var mm=calBestMatch(raws,off.getTime());
+  if(!mm){
+    var nb=null,nd=null;
+    for(var q=0;q<raws.length;q++){
+      var dq=Math.abs(off.getTime()-raws[q]);
+      if(nd==null||dq<nd){nd=dq;nb=raws[q];}
+    }
+    calFail("Écart de "+fmtDur(nd)+" entre ta saisie ("+fmtHM(off)+") et la PM du modèle la plus proche ("+fmtHM(new Date(nb))+") — vérifie l'heure saisie.");
     return;
   }
+  var best=cands[mm.i];
+  var rawPM=new Date(raws[mm.i]);
+  var bd=mm.d;
   var dt=Math.round(bd/60000);
   var dc=0, cv=parseInt($("#calCoef").value,10);
   if(!isNaN(cv)&&best.coef!=null){
     var rawCoef=best.coef-(CAL.on?CAL.dc:0);
     dc=clamp(cv-rawCoef,-30,30);
   }
-  saveCal(dt,dc);
+  saveCal(dt,dc,fmtHM(rawPM),fmtHM(off));
   $("#calPanel").style.display="none";
   processAll();
   toast("Calage appliqué : "+(dt>=0?"+":"−")+Math.abs(dt)+" min"+(dc?" · coef "+(dc>0?"+":"−")+Math.abs(dc):""));
@@ -1171,6 +1202,11 @@ function processAll(){
   var end=Math.min(M.hourly.time.length,TODAY+5*24);
   for(var i=TODAY;i<end;i++){SURF[i]=scoreSurfAt(i);FISH[i]=scoreFishAt(i);DRONE[i]=scoreDroneAt(i);}
   DAY=0;
+  var dotEl=document.querySelector("#locPill .dot");
+  if(dotEl){
+    if(/approx\. IP/.test(state.label||""))dotEl.classList.add("approx");
+    else dotEl.classList.remove("approx");
+  }
   renderTabs();
   renderDay();
   if(state.la!=null)renderDroneZone();
