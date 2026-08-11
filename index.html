@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#081821">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -50,6 +53,10 @@ header{
 .locpill .name{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600}
 .locpill .dot{width:8px; height:8px; border-radius:50%; background:var(--surf); flex:none; box-shadow:0 0 8px var(--surf)}
 .locpill .dot.approx{background:var(--peche); box-shadow:0 0 8px var(--peche)}
+.updbar{
+  background:var(--sand); color:var(--deep); border-radius:12px;
+  padding:10px 14px; font-size:13px; font-weight:600; margin-top:12px; text-align:center;
+}
 .iconbtn{
   flex:none; width:40px; height:40px; border-radius:50%;
   background:var(--panel2); border:1px solid var(--line); color:var(--foam);
@@ -243,10 +250,11 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
 </head>
 <body>
 <div class="wrap">
+  <div class="updbar" id="updBar" style="display:none"></div>
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v19</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v20</b></p>
     </div>
   </header>
 
@@ -359,7 +367,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km via NOAA ERDDAP, MAJ quotidienne, au pixel de mer le plus proche du bord ; en secours et pour J+1 à J+4 : modèle Copernicus Marine au point en mer indiqué. L'étiquette de la tuile Eau précise la source affichée. UV : Copernicus CAMS. Radar : RainViewer. Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v19</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v20</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -522,6 +530,16 @@ function probeCandidates(la,lo){
     c.push([la,lo-d],[la,lo+d],[la-d,lo],[la+d,lo],[la-d,lo-d],[la-d,lo+d],[la+d,lo-d],[la+d,lo+d]);
   });
   return c;
+}
+function parseRemoteVer(html){
+  if(!html)return null;
+  var m=/id="appVer"[^>]*>\s*([^<\s]{1,12})\s*</.exec(html);
+  return m?m[1]:null;
+}
+function shouldReload(localVer,remoteVer,tries){
+  if(!localVer||!remoteVer)return false;
+  if(localVer===remoteVer)return false;
+  return tries<2;
 }
 function calBestMatch(pmsMs,offMs){
   var best=null,i,d;
@@ -1167,6 +1185,42 @@ function applyCal(){
   toast("Calage appliqué : "+(dt>=0?"+":"−")+Math.abs(dt)+" min"+(dc?" · coef "+(dc>0?"+":"−")+Math.abs(dc):""));
 }
 
+/* ---------- mise à jour automatique ---------- */
+function updTries(){
+  try{return parseInt(sessionStorage.getItem("estran_upd")||"0",10)||0;}catch(e){return 0;}
+}
+function setTries(n){
+  try{if(n)sessionStorage.setItem("estran_upd",String(n));else sessionStorage.removeItem("estran_upd");}catch(e){}
+}
+function goFresh(base){location.replace(base+"?v="+Date.now());}
+function checkUpdate(){
+  var el=$("#appVer");
+  var localVer=el?(el.textContent||"").trim():"";
+  if(!localVer)return;
+  var base=String(location.href).split("?")[0].split("#")[0];
+  fetch(base+"?cb="+Date.now(),{cache:"no-store"})
+    .then(function(r){return r.text();})
+    .then(function(t){
+      var rv=parseRemoteVer(t);
+      if(!rv)return;
+      if(rv===localVer){setTries(0);return;}
+      var n=updTries();
+      if(shouldReload(localVer,rv,n)){
+        setTries(n+1);
+        toast("Nouvelle version "+rv+" — mise à jour…");
+        setTimeout(function(){goFresh(base);},900);
+      }else{
+        var b=$("#updBar");
+        if(b){
+          b.style.display="block";
+          b.innerHTML="Version "+rv+" en ligne — <a href='#' id='updNow' style='color:var(--deep)'>forcer la mise à jour</a>";
+          var a=$("#updNow");
+          if(a)a.addEventListener("click",function(ev){ev.preventDefault();setTries(0);goFresh(base);});
+        }
+      }
+    }).catch(function(){});
+}
+
 function renderDay(){
   var i0=TODAY+DAY*24;
   var dayStart=parseLocal(M.hourly.time[i0]);
@@ -1464,6 +1518,10 @@ function init(){
     clearTimeout(qTimer);
     if(v.length<2)return;
     qTimer=setTimeout(function(){doSearch(v);},350);
+  });
+  checkUpdate();
+  document.addEventListener("visibilitychange",function(){
+    if(!document.hidden)checkUpdate();
   });
   setInterval(function(){if(M&&DAY===0)renderDay();},60000);
   setInterval(refreshCurrent,600000);
