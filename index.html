@@ -10,6 +10,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23081821'/%3E%3Cpath d='M6 40c6-6 10-6 16 0s10 6 16 0 10-6 16 0' stroke='%2349C6D6' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3Cpath d='M6 52c6-6 10-6 16 0s10 6 16 0 10-6 16 0' stroke='%23E4D5B4' stroke-width='4' fill='none' stroke-linecap='round' opacity='.75'/%3E%3Ccircle cx='46' cy='18' r='7' fill='%23E4D5B4'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23081821'/%3E%3Cpath d='M6 40c6-6 10-6 16 0s10 6 16 0 10-6 16 0' stroke='%2349C6D6' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3Cpath d='M6 52c6-6 10-6 16 0s10 6 16 0 10-6 16 0' stroke='%23E4D5B4' stroke-width='4' fill='none' stroke-linecap='round' opacity='.75'/%3E%3Ccircle cx='46' cy='18' r='7' fill='%23E4D5B4'/%3E%3C/svg%3E">
 <title>Estran - marées, surf &amp; pêche du bord</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -85,6 +87,35 @@ header{
 }
 .favchip b{font-weight:600}
 .favchip .x{color:var(--mist); font-size:15px; line-height:1; padding:0 2px}
+/* mode compact (raccourci "coup d'oeil") */
+body.mini{padding:0}
+#miniView{padding:calc(12px + env(safe-area-inset-top)) 14px 14px; min-height:100vh}
+.mspot{color:var(--mist); font-size:12px; letter-spacing:.12em; text-transform:uppercase; display:flex; align-items:center; gap:7px}
+.mspot .dot{width:7px; height:7px; border-radius:50%; background:var(--surf)}
+.mspot .dot.approx{background:var(--peche)}
+.mtide{display:flex; align-items:flex-end; justify-content:space-between; gap:10px; margin-top:6px}
+.mtide .big{font-family:"Bricolage Grotesque",sans-serif; font-weight:800; font-size:30px; line-height:1.05}
+.mtide .sub{color:var(--mist); font-size:14px; font-family:"Spline Sans Mono",monospace; margin-top:2px}
+.mtide .coef{font-family:"Bricolage Grotesque",sans-serif; font-weight:800; font-size:40px; color:var(--sand); line-height:1}
+.mtide .coeflbl{color:var(--mist); font-size:10px; letter-spacing:.12em; text-transform:uppercase; text-align:right}
+.mrow{display:flex; gap:8px; margin-top:14px}
+.mcell{
+  flex:1; background:var(--panel); border:1px solid var(--line); border-radius:12px;
+  padding:10px 8px; text-align:center;
+}
+.mcell .t{font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--mist)}
+.mcell .v{font-family:"Spline Sans Mono",monospace; font-weight:600; font-size:14px; margin-top:3px}
+.mcell.on{border-color:currentColor}
+.mcell.surf.on{color:var(--surf)} .mcell.peche.on{color:var(--peche)} .mcell.drone.on{color:#A78BFA}
+.mcell.off .v{color:var(--mist)}
+.mmeteo{
+  display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; color:var(--mist);
+  font-family:"Spline Sans Mono",monospace; font-size:13px;
+}
+.mopen{
+  display:block; text-align:center; margin-top:14px; background:var(--badgeBg); color:var(--badgeFg);
+  border-radius:12px; padding:11px; font-weight:700; font-size:14px; text-decoration:none;
+}
 .eclalert{
   background:rgba(228,213,180,.16); border:1px solid rgba(228,213,180,.5); color:var(--sand);
   border-radius:10px; padding:9px 12px; font-size:13px; font-weight:600; margin:10px 4px 0; line-height:1.45;
@@ -315,12 +346,13 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
 </style>
 </head>
 <body>
-<div class="wrap">
+<div id="miniView" style="display:none"></div>
+<div class="wrap" id="fullView">
   <div class="updbar" id="updBar" style="display:none"></div>
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v24</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v25</b></p>
     </div>
   </header>
 
@@ -449,17 +481,19 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
           <div class="sharebtns">
             <button id="btnShare">Partager le lien</button>
             <button id="btnCopy">Copier l'adresse</button>
+            <button id="btnMini">Ouvrir le mode compact</button>
           </div>
         </div>
       </div>
-      <p class="zhint" style="margin-top:10px">Fais scanner ce code avec l'appareil photo d'un téléphone : l'app s'ouvre directement, sans installation.</p>
+      <p class="zhint" style="margin-top:10px"><b>Raccourci « coup d'œil »</b> : ouvre le mode compact, puis dans Chrome ⋮ → « Ajouter à l'écran d'accueil ». Tu obtiens une seconde icône qui affiche l'essentiel (marée, coef, fenêtres, vent) en un écran, sans charger les cartes.</p>
+      <p class="zhint" style="margin-top:8px">Fais scanner ce code avec l'appareil photo d'un téléphone : l'app s'ouvre directement, sans installation.</p>
     </section>
 
     <footer>
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km via NOAA ERDDAP, MAJ quotidienne, au pixel de mer le plus proche du bord ; en secours et pour J+1 à J+4 : modèle Copernicus Marine au point en mer indiqué. L'étiquette de la tuile Eau précise la source affichée. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v24</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v25</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -776,6 +810,10 @@ function toast(msg){
 }
 function show(id){
   ["#loading","#err","#app"].forEach(function(s){$(s).style.display=(s===id?"block":"none");});
+  if(MINI){
+    var fv=$("#fullView");if(fv)fv.style.display=(id==="#app")?"none":"block";
+    var mv=$("#miniView");if(mv)mv.style.display=(id==="#app")?"block":"none";
+  }
 }
 
 /* ---------- data helpers ---------- */
@@ -1435,7 +1473,7 @@ var THEME_NAME={night:"nuit",day:"jour",sun:"plein soleil"};
 var THEME="night";
 function applyTheme(th,silent){
   THEME=(THEMES.indexOf(th)>=0)?th:"night";
-  document.body.className=(THEME==="night")?"":THEME;
+  document.body.className=((THEME==="night")?"":THEME)+(MINI?" mini":"");
   var b=$("#btnTheme");
   if(b){b.textContent=THEME_ICON[THEME];b.title="Thème : "+THEME_NAME[THEME];}
   try{localStorage.setItem("estran_theme",THEME);}catch(e){}
@@ -1558,6 +1596,55 @@ function renderEclipses(){
   al.textContent=txt;
 }
 
+/* ---------- mode compact ("coup d'œil") ---------- */
+var MINI=false;
+function winState(scores,thr){
+  var now=new Date();
+  var k=TODAY+Math.floor((now-parseLocal(M.hourly.time[TODAY]))/3600000);
+  var end=Math.min(M.hourly.time.length,TODAY+48);
+  if(k<TODAY)k=TODAY;
+  if((scores[k]||0)>=thr){
+    var j=k;
+    while(j+1<end&&(scores[j+1]||0)>=thr)j++;
+    return {on:true,t:"jusqu'à "+fmtHM(new Date(parseLocal(M.hourly.time[j]).getTime()+3600000))};
+  }
+  for(var i=k+1;i<end;i++){
+    if((scores[i]||0)>=thr)return {on:false,t:fmtHM(parseLocal(M.hourly.time[i]))};
+  }
+  return {on:false,t:"—"};
+}
+function renderMini(){
+  var el=$("#miniView");if(!el||!M)return;
+  var now=new Date();
+  var nx=null;
+  for(var i=0;i<EXT.length;i++){if(EXT[i].t>now){nx=EXT[i];break;}}
+  var coef=nx?coefAt(nx.t):null;
+  var s=winState(SURF,62), p=winState(FISH,62), d=winState(DRONE,70);
+  var approx=/approx\. IP/.test(state.label||"");
+  var c=W&&W.current?W.current:null;
+  var sst=null;
+  if(state.sst&&state.sst.v!=null)sst=state.sst.v;
+  else if(M.hourly.sea_surface_temperature)sst=M.hourly.sea_surface_temperature[TODAY+12];
+  var wl=c?wmoLabel(c.weather_code):null;
+  var h="<div class='mspot'><span class='dot"+(approx?" approx":"")+"'></span>"+(state.label||"Estran")+"</div>";
+  h+="<div class='mtide'><div><div class='big'>"+(nx?(nx.type==="PM"?"Pleine mer ":"Basse mer ")+fmtHM(nx.t):"—")+"</div>"
+    +"<div class='sub'>"+(nx?"dans "+fmtDur(nx.t-now):"")+"</div></div>"
+    +"<div><div class='coeflbl'>coef</div><div class='coef'>"+(coef!=null?coef:"—")+"</div></div></div>";
+  h+="<div class='mrow'>"
+    +"<div class='mcell surf "+(s.on?"on":"off")+"'><div class='t'>Surf</div><div class='v'>"+s.t+"</div></div>"
+    +"<div class='mcell peche "+(p.on?"on":"off")+"'><div class='t'>Pêche</div><div class='v'>"+p.t+"</div></div>"
+    +"<div class='mcell drone "+(d.on?"on":"off")+"'><div class='t'>Drone</div><div class='v'>"+d.t+"</div></div>"
+    +"</div>";
+  h+="<div class='mmeteo'>";
+  if(wl)h+="<span>"+wl.e+" "+wl.l+"</span>";
+  if(c&&c.wind_speed_10m!=null)h+="<span>💨 "+frNum(c.wind_speed_10m,0)+" km/h"+(c.wind_direction_10m!=null?" "+compass(c.wind_direction_10m):"")+"</span>";
+  if(c&&c.temperature_2m!=null)h+="<span>🌡️ "+frNum(c.temperature_2m,1)+" °C</span>";
+  if(sst!=null)h+="<span>🌊 "+frNum(sst,1)+" °C</span>";
+  h+="</div>";
+  h+="<a class='mopen' href='"+String(location.href).split("?")[0].split("#")[0]+"'>Ouvrir Estran en entier →</a>";
+  el.innerHTML=h;
+}
+
 function renderDay(){
   var i0=TODAY+DAY*24;
   var dayStart=parseLocal(M.hourly.time[i0]);
@@ -1576,6 +1663,7 @@ function renderDay(){
   renderAge();
   renderMoon(i0);
   renderEclipses();
+  if(MINI)renderMini();
 }
 
 /* ---------- data pipeline ---------- */
@@ -1603,9 +1691,9 @@ function processAll(){
   }
   renderTabs();
   renderDay();
-  if(state.la!=null)renderDroneZone();
+  if(state.la!=null&&!MINI)renderDroneZone();
   show("#app");
-  setTimeout(initRadar,80);
+  if(!MINI)setTimeout(initRadar,80);
 }
 
 /* ---------- zone drone (carte DGAC/IGN via Geoplateforme) ---------- */
@@ -1860,6 +1948,13 @@ function init(){
     if(v.length<2)return;
     qTimer=setTimeout(function(){doSearch(v);},350);
   });
+  MINI=/[?&#]mini/.test(String(location.href));
+  if(MINI){
+    document.body.className+=" mini";
+    var mv=$("#miniView"), fv=$("#fullView");
+    if(mv)mv.style.display="block";
+    if(fv)fv.style.display="none";
+  }
   var th="night";
   try{th=localStorage.getItem("estran_theme")||"night";}catch(e){}
   applyTheme(th,true);
@@ -1873,6 +1968,9 @@ function init(){
     }
   });
   $("#btnCopy").addEventListener("click",copyUrl);
+  $("#btnMini").addEventListener("click",function(){
+    location.href=String(location.href).split("?")[0].split("#")[0]+"?mini=1";
+  });
   $("#btnFav").addEventListener("click",addFav);
   renderFavs();
   window.addEventListener("online",function(){
