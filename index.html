@@ -85,6 +85,27 @@ header{
 }
 .favchip b{font-weight:600}
 .favchip .x{color:var(--mist); font-size:15px; line-height:1; padding:0 2px}
+.eclalert{
+  background:rgba(228,213,180,.16); border:1px solid rgba(228,213,180,.5); color:var(--sand);
+  border-radius:10px; padding:9px 12px; font-size:13px; font-weight:600; margin:10px 4px 0; line-height:1.45;
+}
+.eclitem{padding:11px 0; border-top:1px solid var(--line)}
+.eclitem:first-child{border-top:none; padding-top:2px}
+.eclhead{display:flex; align-items:baseline; gap:9px}
+.ecldate{font-family:"Spline Sans Mono",monospace; font-size:13.5px; font-weight:600; color:var(--foam)}
+.eclcd{margin-left:auto; font-size:11.5px; color:var(--mist); font-family:"Spline Sans Mono",monospace}
+.ecltype{font-size:13.5px; font-weight:600; margin-top:3px}
+.ecldet{color:var(--mist); font-size:12.5px; margin-top:3px; line-height:1.5}
+.eclsafe{color:var(--bad); font-size:12px; font-weight:600; margin-top:4px}
+.moonrow{
+  display:flex; align-items:center; gap:11px; flex-wrap:wrap;
+  background:var(--panel2); border:1px solid var(--line); border-radius:12px;
+  padding:10px 12px; margin-bottom:11px;
+}
+.moonrow .mi{font-size:24px; line-height:1}
+.moonrow .mn{font-weight:700; font-size:14px}
+.moonrow .ml{color:var(--mist); font-size:12.5px; font-family:"Spline Sans Mono",monospace}
+.moonrow .mt{margin-left:auto; font-size:12px; font-weight:700; color:var(--peche); text-align:right}
 .sharewrap{display:flex; gap:14px; align-items:center}
 .qrbox{flex:none; width:132px; background:#fff; border-radius:12px; padding:6px; border:1px solid var(--line)}
 .qr{display:block; width:100%; height:auto}
@@ -299,7 +320,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v22</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v24</b></p>
     </div>
   </header>
 
@@ -340,6 +361,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
         </div>
       </div>
       <div class="alert" id="stormAlert" style="display:none"></div>
+      <div class="eclalert" id="eclAlert" style="display:none"></div>
       <svg class="curve" id="svgCurve" viewBox="0 0 360 132" preserveAspectRatio="none" aria-label="Courbe de marée"></svg>
       <div class="tracks">
         <div class="trk surf"><span class="tl">Surf</span><div class="bar" id="barSurf"></div></div>
@@ -357,6 +379,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
 
     <section class="card">
       <h2><span class="sw" style="background:var(--peche)"></span>Fenêtres pêche du bord</h2>
+      <div class="moonrow" id="moonRow" style="display:none"></div>
       <div class="winrow" id="winPeche"></div>
     </section>
 
@@ -412,6 +435,12 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
     </section>
 
     <section class="card">
+      <h2><span class="sw" style="background:var(--sand)"></span>Éclipses visibles de France</h2>
+      <div id="eclList"></div>
+      <p class="zhint" style="margin-top:10px">Dates et circonstances : IMCCE / NASA (relevés officiels intégrés à l'app, aucun calcul approximatif). Pour les horaires à la seconde à ton adresse exacte : <a href="https://eclipseinfo.fr/fr_FR/trajectoire" target="_blank" rel="noopener" style="color:var(--surf)">carte interactive IMCCE</a>.</p>
+    </section>
+
+    <section class="card">
       <h2><span class="sw" style="background:var(--surf)"></span>Partager Estran</h2>
       <div class="sharewrap">
         <div class="qrbox"><svg viewBox="0 0 37 37" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" class="qr"><rect width="37" height="37" fill="#fff"/><path d="M4 4h7v1h-7zM12 4h1v1h-1zM15 4h3v1h-3zM23 4h2v1h-2zM26 4h7v1h-7zM4 5h1v1h-1zM10 5h1v1h-1zM12 5h1v1h-1zM14 5h1v1h-1zM16 5h2v1h-2zM21 5h2v1h-2zM26 5h1v1h-1zM32 5h1v1h-1zM4 6h1v1h-1zM6 6h3v1h-3zM10 6h1v1h-1zM13 6h2v1h-2zM17 6h3v1h-3zM23 6h1v1h-1zM26 6h1v1h-1zM28 6h3v1h-3zM32 6h1v1h-1zM4 7h1v1h-1zM6 7h3v1h-3zM10 7h1v1h-1zM12 7h4v1h-4zM21 7h1v1h-1zM23 7h1v1h-1zM26 7h1v1h-1zM28 7h3v1h-3zM32 7h1v1h-1zM4 8h1v1h-1zM6 8h3v1h-3zM10 8h1v1h-1zM14 8h7v1h-7zM23 8h1v1h-1zM26 8h1v1h-1zM28 8h3v1h-3zM32 8h1v1h-1zM4 9h1v1h-1zM10 9h1v1h-1zM13 9h2v1h-2zM18 9h1v1h-1zM23 9h2v1h-2zM26 9h1v1h-1zM32 9h1v1h-1zM4 10h7v1h-7zM12 10h1v1h-1zM14 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM20 10h1v1h-1zM22 10h1v1h-1zM24 10h1v1h-1zM26 10h7v1h-7zM12 11h1v1h-1zM14 11h2v1h-2zM17 11h2v1h-2zM21 11h1v1h-1zM23 11h1v1h-1zM4 12h1v1h-1zM6 12h2v1h-2zM9 12h3v1h-3zM13 12h2v1h-2zM16 12h3v1h-3zM20 12h4v1h-4zM26 12h1v1h-1zM29 12h1v1h-1zM31 12h2v1h-2zM6 13h2v1h-2zM9 13h1v1h-1zM12 13h2v1h-2zM16 13h1v1h-1zM20 13h1v1h-1zM23 13h6v1h-6zM32 13h1v1h-1zM5 14h2v1h-2zM8 14h1v1h-1zM10 14h3v1h-3zM15 14h2v1h-2zM18 14h1v1h-1zM21 14h2v1h-2zM24 14h3v1h-3zM30 14h2v1h-2zM4 15h1v1h-1zM6 15h1v1h-1zM8 15h1v1h-1zM11 15h4v1h-4zM16 15h5v1h-5zM22 15h1v1h-1zM24 15h1v1h-1zM26 15h1v1h-1zM32 15h1v1h-1zM5 16h1v1h-1zM8 16h1v1h-1zM10 16h1v1h-1zM13 16h1v1h-1zM19 16h3v1h-3zM23 16h1v1h-1zM29 16h2v1h-2zM4 17h6v1h-6zM11 17h1v1h-1zM15 17h1v1h-1zM17 17h1v1h-1zM19 17h3v1h-3zM23 17h2v1h-2zM26 17h1v1h-1zM30 17h3v1h-3zM6 18h1v1h-1zM9 18h3v1h-3zM13 18h1v1h-1zM18 18h1v1h-1zM20 18h2v1h-2zM23 18h2v1h-2zM27 18h1v1h-1zM30 18h3v1h-3zM4 19h1v1h-1zM7 19h3v1h-3zM15 19h3v1h-3zM19 19h2v1h-2zM22 19h3v1h-3zM27 19h2v1h-2zM31 19h1v1h-1zM4 20h2v1h-2zM7 20h1v1h-1zM9 20h3v1h-3zM20 20h1v1h-1zM24 20h2v1h-2zM28 20h2v1h-2zM31 20h1v1h-1zM9 21h1v1h-1zM11 21h4v1h-4zM16 21h2v1h-2zM19 21h1v1h-1zM21 21h1v1h-1zM24 21h1v1h-1zM27 21h1v1h-1zM29 21h3v1h-3zM4 22h1v1h-1zM6 22h1v1h-1zM8 22h3v1h-3zM13 22h4v1h-4zM19 22h3v1h-3zM26 22h3v1h-3zM30 22h1v1h-1zM12 23h1v1h-1zM14 23h2v1h-2zM19 23h1v1h-1zM21 23h1v1h-1zM23 23h1v1h-1zM25 23h3v1h-3zM30 23h1v1h-1zM5 24h1v1h-1zM9 24h3v1h-3zM13 24h1v1h-1zM16 24h2v1h-2zM21 24h2v1h-2zM24 24h7v1h-7zM12 25h4v1h-4zM17 25h2v1h-2zM20 25h3v1h-3zM24 25h1v1h-1zM28 25h5v1h-5zM4 26h7v1h-7zM12 26h1v1h-1zM14 26h2v1h-2zM17 26h1v1h-1zM20 26h2v1h-2zM23 26h2v1h-2zM26 26h1v1h-1zM28 26h2v1h-2zM31 26h1v1h-1zM4 27h1v1h-1zM10 27h1v1h-1zM12 27h1v1h-1zM15 27h2v1h-2zM22 27h1v1h-1zM24 27h1v1h-1zM28 27h2v1h-2zM31 27h2v1h-2zM4 28h1v1h-1zM6 28h3v1h-3zM10 28h1v1h-1zM13 28h3v1h-3zM18 28h2v1h-2zM21 28h1v1h-1zM24 28h5v1h-5zM30 28h1v1h-1zM4 29h1v1h-1zM6 29h3v1h-3zM10 29h1v1h-1zM12 29h3v1h-3zM16 29h1v1h-1zM18 29h3v1h-3zM24 29h1v1h-1zM28 29h2v1h-2zM32 29h1v1h-1zM4 30h1v1h-1zM6 30h3v1h-3zM10 30h1v1h-1zM12 30h1v1h-1zM18 30h1v1h-1zM21 30h3v1h-3zM27 30h1v1h-1zM30 30h1v1h-1zM32 30h1v1h-1zM4 31h1v1h-1zM10 31h1v1h-1zM13 31h2v1h-2zM16 31h2v1h-2zM20 31h1v1h-1zM23 31h2v1h-2zM26 31h4v1h-4zM31 31h1v1h-1zM4 32h7v1h-7zM12 32h2v1h-2zM18 32h2v1h-2zM23 32h3v1h-3zM27 32h1v1h-1zM31 32h1v1h-1z" fill="#000"/></svg></div>
@@ -427,10 +456,10 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
     </section>
 
     <footer>
-      Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km via NOAA ERDDAP, MAJ quotidienne, au pixel de mer le plus proche du bord ; en secours et pour J+1 à J+4 : modèle Copernicus Marine au point en mer indiqué. L'étiquette de la tuile Eau précise la source affichée. UV : Copernicus CAMS. Radar : RainViewer. Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
+      Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km via NOAA ERDDAP, MAJ quotidienne, au pixel de mer le plus proche du bord ; en secours et pour J+1 à J+4 : modèle Copernicus Marine au point en mer indiqué. L'étiquette de la tuile Eau précise la source affichée. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v22</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v24</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -649,6 +678,95 @@ function favAdd(list,item){
   for(i=0;i<list.length;i++){if(list[i].k!==item.k)out.push(list[i]);}
   out.unshift(item);
   return out.slice(0,12);
+}
+function moonElong(d){
+  var R=Math.PI/180;
+  var jd=d.getTime()/86400000+2440587.5;
+  var T=(jd-2451545)/36525;
+  var Ms=357.52911+35999.05029*T;
+  var Ls=280.46646+36000.76983*T
+    +1.914602*Math.sin(R*Ms)+0.019993*Math.sin(R*2*Ms)+0.000289*Math.sin(R*3*Ms);
+  var Lm=218.3165+481267.8813*T;
+  var Mm=134.9634+477198.8675*T;
+  var Dm=297.8502+445267.1115*T;
+  var Fm=93.2721+483202.0175*T;
+  var lam=Lm+6.289*Math.sin(R*Mm)-1.274*Math.sin(R*(2*Dm-Mm))+0.658*Math.sin(R*2*Dm)
+    +0.214*Math.sin(R*2*Mm)-0.186*Math.sin(R*Ms)-0.114*Math.sin(R*2*Fm);
+  return ((lam-Ls)%360+360)%360;
+}
+function moonInfo(d){
+  var SYN=29.530588853;
+  var e=moonElong(d);
+  var age=e/360*SYN;
+  var illum=(1-Math.cos(e*Math.PI/180))/2;
+  var p;
+  if(age<1.4||age>SYN-1.4)p={i:"\u{1F311}",n:"Nouvelle lune"};
+  else if(age<6.2)p={i:"\u{1F312}",n:"Premier croissant"};
+  else if(age<8.6)p={i:"\u{1F313}",n:"Premier quartier"};
+  else if(age<13.3)p={i:"\u{1F314}",n:"Gibbeuse croissante"};
+  else if(age<16.2)p={i:"\u{1F315}",n:"Pleine lune"};
+  else if(age<20.9)p={i:"\u{1F316}",n:"Gibbeuse d\u00e9croissante"};
+  else if(age<23.5)p={i:"\u{1F317}",n:"Dernier quartier"};
+  else p={i:"\u{1F318}",n:"Dernier croissant"};
+  var dNew=Math.min(age,SYN-age);
+  var dFull=Math.abs(age-SYN/2);
+  var tide;
+  if(dNew<2||dFull<2)tide="vive-eau — forts coefficients";
+  else if(Math.abs(age-SYN/4)<2||Math.abs(age-3*SYN/4)<2)tide="morte-eau — faibles coefficients";
+  else tide=(age<SYN/2)?"marée en hausse vers la vive-eau":"marée vers la morte-eau";
+  return {age:age,illum:illum,icon:p.i,name:p.n,tide:tide};
+}
+/* Éclipses visibles de France — données IMCCE / NASA (aucun calcul local) */
+var ECLIPSES=[
+ {d:"2026-08-12",max:"2026-08-12T20:26",sun:1,
+  t:"Éclipse partielle de Soleil",
+  det:"Totale dans le nord de l'Espagne. Dans les Landes : jusqu'à 98,5 % du Soleil masqué au maximum vers 20h26, Soleil à ~6,8° sur l'horizon ouest (coucher ~45 min après). Début de la phase partielle vers 19h18. Il faut une vue bien dégagée vers l'ouest — le bord de mer est idéal.",
+  local:1},
+ {d:"2026-08-28",max:"2026-08-28T06:18",sun:0,
+  t:"Éclipse partielle de Lune",
+  det:"Maximum vers 06h18, Lune basse à l'ouest juste avant son coucher. Observation à l'œil nu sans danger.",
+  local:1},
+ {d:"2027-02-20",max:"2027-02-20T12:00",sun:0,
+  t:"Éclipse pénombrale de Lune",
+  det:"Assombrissement très discret, peu spectaculaire à l'œil nu.",local:0},
+ {d:"2027-08-02",max:"2027-08-02T12:00",sun:1,
+  t:"Éclipse partielle de Soleil",
+  det:"Totale au sud de l'Espagne et en Afrique du Nord ; partielle depuis la France. Horaires locaux à confirmer sur la carte IMCCE à l'approche.",local:0},
+ {d:"2028-01-12",max:"2028-01-12T12:00",sun:0,
+  t:"Éclipse partielle de Lune",det:"Visible depuis la France.",local:0},
+ {d:"2028-01-26",max:"2028-01-26T12:00",sun:1,
+  t:"Éclipse annulaire de Soleil",
+  det:"« Anneau de feu » sur une bande traversant la péninsule Ibérique ; partielle à annulaire selon la position en France.",local:0},
+ {d:"2028-12-31",max:"2028-12-31T12:00",sun:0,
+  t:"Éclipse totale de Lune",det:"Visible depuis la France.",local:0},
+ {d:"2029-06-26",max:"2029-06-26T12:00",sun:0,
+  t:"Éclipse totale de Lune",det:"Visible depuis la France.",local:0}
+];
+function nextEclipses(list,nowMs,n){
+  var out=[];
+  for(var i=0;i<list.length;i++){
+    var end=parseLocal(list[i].max).getTime()+3*3600000;
+    if(end>=nowMs)out.push(list[i]);
+    if(out.length>=(n||3))break;
+  }
+  return out;
+}
+function eclUrgency(maxMs,nowMs){
+  var dt=maxMs-nowMs;
+  if(dt<-3*3600000)return "past";
+  if(dt<=0)return "now";
+  if(dt<=6*3600000)return "imminent";
+  if(dt<=3*86400000)return "soon";
+  return "far";
+}
+function eclCountdown(maxMs,nowMs){
+  var dt=maxMs-nowMs;
+  if(dt<0)return "en cours ou passée";
+  var days=Math.floor(dt/86400000);
+  if(days>=2)return "dans "+days+" jours";
+  var h=Math.floor(dt/3600000), m=Math.round((dt-h*3600000)/60000);
+  if(h>=1)return "dans "+h+" h "+pad2(m);
+  return "dans "+m+" min";
 }
 /* ==================== /PURE ==================== */
 
@@ -1391,6 +1509,55 @@ function copyUrl(){
   }
 }
 
+function renderMoon(i0){
+  var el=$("#moonRow");if(!el||!M)return;
+  var d=parseLocal(M.hourly.time[i0]);
+  var ref=(DAY===0)?new Date():new Date(d.getFullYear(),d.getMonth(),d.getDate(),13,0);
+  var mi=moonInfo(ref);
+  el.style.display="flex";
+  el.innerHTML="<span class='mi'>"+mi.icon+"</span>"
+    +"<span><span class='mn'>"+mi.name+"</span><br><span class='ml'>"+frNum(mi.illum*100,0)+" % éclairée · j+"+frNum(mi.age,0)+"</span></span>"
+    +"<span class='mt'>"+mi.tide+"</span>";
+}
+
+function renderEclipses(){
+  var el=$("#eclList");
+  var now=Date.now();
+  var list=nextEclipses(ECLIPSES,now,4);
+  if(el){
+    if(!list.length){el.innerHTML="<p class='zhint' style='margin:0'>Aucune éclipse enregistrée au-delà de cette date — mise à jour de la table à prévoir.</p>";}
+    else{
+      var h="";
+      for(var i=0;i<list.length;i++){
+        var e=list[i], mx=parseLocal(e.max).getTime();
+        var dparts=e.d.split("-");
+        h+="<div class='eclitem'><div class='eclhead'>"
+          +"<span class='ecldate'>"+dparts[2]+"/"+dparts[1]+"/"+dparts[0]+"</span>"
+          +"<span class='eclcd'>"+eclCountdown(mx,now)+"</span></div>"
+          +"<div class='ecltype'>"+(e.sun?"☀️ ":"🌕 ")+e.t+"</div>"
+          +"<div class='ecldet'>"+e.det+"</div>"
+          +(e.sun?"<div class='eclsafe'>⚠️ Lunettes certifiées ISO 12312-2 obligatoires — jamais à l'œil nu, ni appareil photo ou drone sans filtre solaire.</div>":"")
+          +"</div>";
+      }
+      el.innerHTML=h;
+    }
+  }
+  var al=$("#eclAlert");
+  if(!al)return;
+  var nx=list.length?list[0]:null;
+  if(!nx){al.style.display="none";return;}
+  var mxMs=parseLocal(nx.max).getTime();
+  var u=eclUrgency(mxMs,now);
+  if(u==="far"){al.style.display="none";return;}
+  var txt;
+  if(u==="now")txt=(nx.sun?"🌒 Éclipse en cours":"🌕 Éclipse de Lune en cours")+" — maximum "+fmtHM(parseLocal(nx.max))+".";
+  else txt=(nx.sun?"🌒 ":"🌕 ")+nx.t+" "+(u==="imminent"?"aujourd'hui":eclCountdown(mxMs,now))
+    +" — maximum "+fmtHM(parseLocal(nx.max))+(nx.local&&nx.sun?", jusqu'à 98,5 % masqué ici":"")+".";
+  if(nx.sun)txt+=" Lunettes ISO 12312-2 indispensables.";
+  al.style.display="block";
+  al.textContent=txt;
+}
+
 function renderDay(){
   var i0=TODAY+DAY*24;
   var dayStart=parseLocal(M.hourly.time[i0]);
@@ -1407,6 +1574,8 @@ function renderDay(){
   renderRainNext();
   renderCalStatus();
   renderAge();
+  renderMoon(i0);
+  renderEclipses();
 }
 
 /* ---------- data pipeline ---------- */
