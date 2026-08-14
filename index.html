@@ -23,7 +23,7 @@
   --deep:#081821; --panel:#0E2330; --panel2:#12303F; --line:#1C3E4E;
   --foam:#EAF4F4; --mist:#89A9B6; --sand:#E4D5B4;
   --surf:#49C6D6; --peche:#E7A94E; --bad:#E06C5B;
-  --ok:#7BD88F; --badText:#F2A99B;
+  --ok:#7BD88F; --badText:#F2A99B; --track:rgba(255,255,255,.08);
   --badgeBg:#E4D5B4; --badgeFg:#081821;
   --rad:16px;
 }
@@ -31,14 +31,14 @@ body.day{
   --deep:#EDF3F5; --panel:#FFFFFF; --panel2:#E7EFF3; --line:#C3D4DC;
   --foam:#0C1F29; --mist:#516E7C; --sand:#8A6A14;
   --surf:#0B7A8A; --peche:#9C5A10; --bad:#B23F2E;
-  --ok:#15773F; --badText:#B23F2E;
+  --ok:#15773F; --badText:#B23F2E; --track:rgba(12,31,41,.12);
   --badgeBg:#0C1F29; --badgeFg:#FFFFFF;
 }
 body.sun{
   --deep:#FFFFFF; --panel:#FFFFFF; --panel2:#F0F0F0; --line:#000000;
   --foam:#000000; --mist:#262626; --sand:#5A4200;
   --surf:#004F5B; --peche:#7A3E00; --bad:#9E0000;
-  --ok:#0A5A2C; --badText:#9E0000;
+  --ok:#0A5A2C; --badText:#9E0000; --track:rgba(0,0,0,.18);
   --badgeBg:#000000; --badgeFg:#FFFFFF;
 }
 body.sun .card,body.sun .hero,body.sun .cond,body.sun .tpill,body.sun .dnow,body.sun .locpill,body.sun .iconbtn{border-width:2px}
@@ -196,8 +196,9 @@ svg.curve{display:block; width:100%; height:auto; margin-top:6px}
 .tracks{padding:2px 4px 0}
 .trk{display:flex; align-items:center; gap:8px; margin-top:7px}
 .trk .tl{flex:none; width:44px; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--mist); font-weight:600}
-.trk .bar{flex:1; height:8px; border-radius:4px; background:rgba(255,255,255,.05); position:relative; overflow:hidden}
+.trk .bar{flex:1; height:8px; border-radius:4px; background:var(--track); position:relative; overflow:hidden}
 .trk .seg{position:absolute; top:0; bottom:0; border-radius:4px}
+.trk .seg.ghost{opacity:.45; background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.55) 0 3px,transparent 3px 6px)}
 .trk.surf .seg{background:var(--surf)}
 .trk.peche .seg{background:var(--peche)}
 .hscale{display:flex; justify-content:space-between; color:var(--mist); font-size:9.5px; font-family:"Spline Sans Mono",monospace; padding:4px 4px 0}
@@ -359,7 +360,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v30</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v31</b></p>
     </div>
   </header>
 
@@ -504,7 +505,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v30</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v31</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -1149,6 +1150,17 @@ function renderTracks(i0){
       seg.style.left=l+"%";seg.style.width=wd+"%";
       bar.appendChild(seg);
     });
+    if(!wins.length){
+      var bb=bestBlock(scores,i0,i0+24,2);
+      if(bb&&bb.avg>0){
+        var g=document.createElement("div");
+        g.className="seg ghost";
+        g.style.left=((bb.a-i0)/24*100)+"%";
+        g.style.width=((bb.b-bb.a+1)/24*100)+"%";
+        g.title="Meilleur créneau (pas de fenêtre franche)";
+        bar.appendChild(g);
+      }
+    }
     return wins;
   };
   return {surf:mk("#barSurf",SURF,62),peche:mk("#barPeche",FISH,62),drone:mk("#barDrone",DRONE,70)};
@@ -1815,6 +1827,8 @@ function winState(scores,thr){
   for(var i=k+1;i<end;i++){
     if((scores[i]||0)>=thr)return {on:false,t:fmtHM(parseLocal(M.hourly.time[i]))};
   }
+  var bb=bestBlock(scores,TODAY,Math.min(TODAY+24,end),2);
+  if(bb&&bb.avg>0)return {on:false,t:"~"+fmtHM(parseLocal(M.hourly.time[bb.a]))};
   return {on:false,t:"—"};
 }
 function renderMini(){
