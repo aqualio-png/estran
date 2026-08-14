@@ -359,7 +359,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v28</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v29</b></p>
     </div>
   </header>
 
@@ -414,6 +414,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
     <section class="card" id="surfCard">
       <h2><span class="sw" style="background:var(--surf)"></span>Fenêtres surf</h2>
       <div class="tstrip" id="surfTemps" style="display:none"></div>
+      <p class="zhint" id="eauHint" style="display:none;margin:-4px 0 11px"></p>
       <div class="winrow" id="winSurf"></div>
     </section>
 
@@ -499,10 +500,10 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
     </section>
 
     <footer>
-      Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km via NOAA ERDDAP, MAJ quotidienne, au pixel de mer le plus proche du bord ; en secours et pour J+1 à J+4 : modèle Copernicus Marine au point en mer indiqué. L'étiquette de la tuile Eau précise la source affichée. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
+      Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v28</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v29</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -647,6 +648,36 @@ function uvLabel(v){
   if(v<8)return {l:"\u00e9lev\u00e9",cls:"warn"};
   if(v<11)return {l:"tr\u00e8s \u00e9lev\u00e9",cls:"no"};
   return {l:"extr\u00eame",cls:"no"};
+}
+function pickLatestSST(rows,la,lo){
+  var latest=null,i,v;
+  for(i=0;i<rows.length;i++){
+    var r=rows[i];
+    if(!r||r[3]==null)continue;
+    v=r[3]; if(v>100)v=v-273.15;
+    if(v<-5||v>45)continue;
+    var day=(typeof r[0]==="string")?r[0].slice(0,10):"";
+    if(latest==null||day>latest)latest=day;
+  }
+  if(latest==null)return null;
+  var same=[];
+  for(i=0;i<rows.length;i++){
+    var rr=rows[i];
+    if(!rr||rr[3]==null)continue;
+    if(((typeof rr[0]==="string")?rr[0].slice(0,10):"")!==latest)continue;
+    same.push(rr);
+  }
+  var best=pickNearestSST(same,la,lo);
+  if(best)best.day=latest;
+  return best;
+}
+function sstAgeDays(dayIso,nowMs){
+  if(!dayIso)return null;
+  var p=dayIso.split("-");
+  var d=new Date(+p[0],+p[1]-1,+p[2]);
+  var now=new Date(nowMs);
+  var today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  return Math.round((today-d)/86400000);
 }
 function pickNearestSST(rows,la,lo){
   var best=null,bd=Infinity;
@@ -1238,13 +1269,13 @@ function refreshCurrent(){
 function fetchSSTsat(){
   if(state.la==null)return;
   var la=state.la, lo=state.lo, d=0.06;
-  var u="https://coastwatch.pfeg.noaa.gov/erddap/griddap/jplMURSST41.json?analysed_sst%5B(last)%5D%5B("+(la-d)+"):("+(la+d)+")%5D%5B("+(lo-d)+"):("+(lo+d)+")%5D";
+  var u="https://coastwatch.pfeg.noaa.gov/erddap/griddap/jplMURSST41.json?analysed_sst%5B(last-2):1:(last)%5D%5B("+(la-d)+"):("+(la+d)+")%5D%5B("+(lo-d)+"):("+(lo+d)+")%5D";
   fetch(u).then(function(r){
     if(!r.ok)throw new Error("http");
     return r.json();
   }).then(function(j){
     var rows=(j&&j.table&&j.table.rows)||[];
-    var best=pickNearestSST(rows,la,lo);
+    var best=pickLatestSST(rows,la,lo);
     if(best){
       state.sst=best;
       if(M)renderSurfTemps(TODAY+DAY*24);
@@ -1289,11 +1320,14 @@ function renderSurfTemps(i0){
   var ul=uvLabel(uv);
   var dist=null;
   if(state.mla!=null&&state.la!=null)dist=distKm(state.la,state.lo,state.mla,state.mlo);
-  var eauVal=null, eauLbl="Eau", eauTitle="";
+  var eauVal=null, eauLbl="Eau", eauTitle="", eauNote="";
   if(DAY===0&&state.sst&&state.sst.v!=null){
     eauVal=state.sst.v;
-    eauLbl="Eau · sat. 1 km"+(state.sst.dist>=2?" · à "+frNum(state.sst.dist,0)+" km":"");
-    eauTitle="Analyse satellite NASA/JPL MUR du "+state.sst.day;
+    var ageD=sstAgeDays(state.sst.day,Date.now());
+    var dp=(state.sst.day||"").split("-");
+    eauLbl="Eau · sat."+(dp.length===3?" "+dp[2]+"/"+dp[1]:"")+(ageD!=null&&ageD>=1?" (J-"+ageD+")":"");
+    eauTitle="Analyse satellite NASA/JPL MUR 1 km, mesure nocturne du "+(state.sst.day||"?");
+    if(sst!=null&&Math.abs(sst-eauVal)>=1.5)eauNote="modèle : "+frNum(sst,1)+" °C";
   }else if(sst!=null){
     eauVal=sst;
     eauLbl="Eau · modèle"+(dist!=null&&dist>=2?" · à "+frNum(dist,0)+" km":"");
@@ -1301,9 +1335,15 @@ function renderSurfTemps(i0){
   }
   if(eauVal==null&&air==null&&uv==null){el.style.display="none";return;}
   el.style.display="flex";
-  el.innerHTML="<span class='tpill' title='"+eauTitle+"'><small>"+eauLbl+"</small>🌊 "+(eauVal!=null?frNum(eauVal,1)+" °C":"—")+"</span>"
+  el.innerHTML="<span class='tpill' title='"+eauTitle+"'><small>"+eauLbl+"</small>🌊 "+(eauVal!=null?frNum(eauVal,1)+" °C":"—")
+    +(eauNote?"<em style='display:block;font-style:normal;font-size:10px;color:var(--mist)'>"+eauNote+"</em>":"")+"</span>"
     +"<span class='tpill'><small>Air"+(DAY===0?" (direct)":"")+"</small>🌡️ "+(air!=null?frNum(air,1)+" °C":"—")+"</span>"
     +"<span class='tpill'><small>UV"+(uvMax?" max jour":"")+"</small>"+(ul?"<span class='uv"+ul.cls+"'>☀️ "+frNum(uv,0)+" · "+ul.l+"</span>":"—")+"</span>";
+  var hint=$("#eauHint");
+  if(hint){
+    hint.style.display="block";
+    hint.textContent="Température de l'eau : analyse satellite nocturne (dite « de fondation »), publiée avec ~1 jour de décalage. En été, l'eau de la zone de surf l'après-midi est souvent 1 à 3 °C plus chaude que cette valeur.";
+  }
 }
 
 function renderStorm(i0){
