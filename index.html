@@ -359,7 +359,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v27</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v28</b></p>
     </div>
   </header>
 
@@ -502,7 +502,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km via NOAA ERDDAP, MAJ quotidienne, au pixel de mer le plus proche du bord ; en secours et pour J+1 à J+4 : modèle Copernicus Marine au point en mer indiqué. L'étiquette de la tuile Eau précise la source affichée. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v27</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v28</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -1412,7 +1412,8 @@ function renderRainNext(){
     vals.push(v);
     hrs.push(fmtHM(parseLocal(M.hourly.time[idx])).slice(0,3));
   }
-  var head="<div class='rnt'>Ensuite — pluie prévue sur 12 h au point GPS (AROME)</div>";
+  var maj=state.at?(" · calcul de "+fmtHM(new Date(state.at))):"";
+  var head="<div class='rnt'>Ensuite — pluie prévue sur 12 h au point GPS (AROME"+maj+")</div>";
   var bars="", labels="";
   for(var q2=0;q2<vals.length;q2++){
     var v2=vals[q2];
@@ -1924,7 +1925,8 @@ function fetchAll(la,lo,label,silent){
     processAll();
     state.sst=null;
     if(!LAND)fetchSSTsat();
-    if(silent)toast("Données actualisées");
+    if(silent==="auto"){/* rafraichissement de fond, sans notification */}
+    else if(silent)toast("Données actualisées");
     else if(LAND)toast("Aucune marée ici — mode intérieur des terres");
   };
   probeMarine(la,lo).then(function(pt){
@@ -2121,10 +2123,15 @@ function init(){
     checkUpdate();
     refreshCurrent();
     if(radar.map&&!radar.timer)radarLoad();
+    if(state.la!=null&&state.at&&(Date.now()-state.at)>20*60000)
+      fetchAll(state.la,state.lo,state.label,"auto");
   });
   setInterval(function(){if(M&&DAY===0)renderDay();},60000);
   setInterval(refreshCurrent,600000);
   setInterval(function(){if(radar.map&&!radar.timer)radarLoad();},300000);
+  setInterval(function(){
+    if(state.la!=null)fetchAll(state.la,state.lo,state.label,"auto");
+  },1800000);
   var c=null;
   try{c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");}catch(e){}
   if(c&&c.M&&c.M.hourly&&cacheUsable(c.M.hourly.time,isoDate(new Date()))){
