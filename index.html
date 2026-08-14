@@ -359,7 +359,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v29</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v30</b></p>
     </div>
   </header>
 
@@ -416,6 +416,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
       <div class="tstrip" id="surfTemps" style="display:none"></div>
       <p class="zhint" id="eauHint" style="display:none;margin:-4px 0 11px"></p>
       <div class="winrow" id="winSurf"></div>
+      <p class="zhint" id="surfNote" style="display:none;margin-top:10px"></p>
     </section>
 
     <section class="card">
@@ -503,7 +504,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v29</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v30</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -732,6 +733,33 @@ function calDelta(pmMs,offMs){
   }
   return best;
 }
+function bestBlock(scores,i0,i1,len){
+  var best=null;
+  for(var a=i0;a+len-1<i1;a++){
+    var sum=0,n=0;
+    for(var k=0;k<len;k++){var v=scores[a+k];sum+=(v==null?0:v);n++;}
+    var avg=sum/n;
+    if(best==null||avg>best.avg)best={a:a,b:a+len-1,avg:avg};
+  }
+  return best;
+}
+function surfLimiter(wh,wp,ws,windDiff){
+  if(wh==null)return "données de houle indisponibles";
+  if(wh<0.3)return "houle quasi nulle ("+frNum(wh,1)+" m)";
+  if(wh<0.6)return "petites vagues ("+frNum(wh,1)+" m)";
+  if(wh>3)return "mer trop grosse ("+frNum(wh,1)+" m)";
+  if(ws!=null&&ws>=25&&windDiff!=null&&windDiff<60)return "vent onshore fort ("+frNum(ws,0)+" km/h)";
+  if(wp!=null&&wp<6)return "houle courte et désordonnée ("+frNum(wp,0)+" s)";
+  if(ws!=null&&ws>=30)return "vent fort ("+frNum(ws,0)+" km/h)";
+  return "conditions moyennes";
+}
+function coefNote(c){
+  if(c==null)return "";
+  if(c>=95)return "Coef "+c+" : très forte marée — l eau monte et descend vite, les courants et baïnes sont puissants et la fenêtre se déplace rapidement. Bain engagé, à réserver aux bons nageurs.";
+  if(c>=80)return "Coef "+c+" : grande marée — marée rapide, courants marqués, bancs qui travaillent. Surveille les baïnes.";
+  if(c<45)return "Coef "+c+" : faible marnage — la marée bouge peu, la fenêtre est étalée mais les bancs sont moins réveillés.";
+  return "";
+}
 function spotKey(la,lo){return (Math.round(la*10)/10)+","+(Math.round(lo*10)/10);}
 function cacheUsable(times,todayIso){
   if(!times||!times.length||!todayIso)return false;
@@ -937,6 +965,10 @@ function scoreSurfAt(i){
   if(ph.rising)base+=8;
   base=clamp(base,0,100);
   var wh=M.hourly.wave_height[i], wp=M.hourly.wave_period[i], wd=M.hourly.wave_direction[i];
+  var sh=M.hourly.swell_wave_height?M.hourly.swell_wave_height[i]:null;
+  var sp=M.hourly.swell_wave_period?M.hourly.swell_wave_period[i]:null;
+  var sd=M.hourly.swell_wave_direction?M.hourly.swell_wave_direction[i]:null;
+  if(sh!=null&&sh>0.15){wh=sh;if(sp!=null)wp=sp;if(sd!=null)wd=sd;}
   if(wh==null)return 0;
   var fh=wh<0.3?0.15:wh<0.6?0.6:wh<=2.2?1:wh<=3?0.65:0.3;
   var fp=wp==null?0.85:wp>=9?1:wp>=7?0.85:wp>=5?0.7:0.5;
@@ -950,7 +982,27 @@ function scoreSurfAt(i){
       else{fw=ws<15?0.9:ws<25?0.7:0.5;}
     }else if(ws!=null){fw=ws<15?0.9:ws<25?0.7:0.5;}
   }
-  return clamp(Math.round(base*fh*fp*fw),0,100);
+  var cf=1, cc=coefAt(t);
+  if(cc!=null){
+    if(cc>=95)cf=(Math.abs(ph.p-0.5)<0.2)?0.9:1.02;
+    else if(cc>=80)cf=1.02;
+    else if(cc<45)cf=0.97;
+  }
+  return clamp(Math.round(base*fh*fp*fw*cf),0,100);
+}
+function surfInfoAt(i){
+  var wh=M.hourly.wave_height[i], wp=M.hourly.wave_period[i], wd=M.hourly.wave_direction[i];
+  var sh=M.hourly.swell_wave_height?M.hourly.swell_wave_height[i]:null;
+  var sp=M.hourly.swell_wave_period?M.hourly.swell_wave_period[i]:null;
+  var sd=M.hourly.swell_wave_direction?M.hourly.swell_wave_direction[i]:null;
+  if(sh!=null&&sh>0.15){wh=sh;if(sp!=null)wp=sp;if(sd!=null)wd=sd;}
+  var wi=widx(i), ws=null, diff=null;
+  if(wi!=null){
+    ws=W.hourly.wind_speed_10m[wi];
+    var wdir=W.hourly.wind_direction_10m[wi];
+    if(wdir!=null&&wd!=null)diff=angDiff(wdir,wd);
+  }
+  return surfLimiter(wh,wp,ws,diff);
 }
 var LAND=false;
 function solarNoonAt(t){
@@ -1105,9 +1157,22 @@ function renderTracks(i0){
 function starsTxt(n){return n===3?"★★★":n===2?"★★☆":"★☆☆";}
 
 function renderWindows(wins){
-  var fill=function(sel,list,cls){
+  var i0b=TODAY+DAY*24;
+  var fill=function(sel,list,cls,scores,why){
     var el=$(sel);el.innerHTML="";
-    if(!list.length){el.innerHTML="<span class='nowin'>Pas de fenêtre nette ce jour — conditions moyennes.</span>";return;}
+    if(!list.length){
+      var bb=scores?bestBlock(scores,i0b,i0b+24,2):null;
+      if(bb&&bb.avg>0){
+        var st=parseLocal(M.hourly.time[bb.a]);
+        var en=new Date(parseLocal(M.hourly.time[bb.b]).getTime()+3600000);
+        var lim=why?why(Math.round((bb.a+bb.b)/2)):"conditions modestes";
+        el.innerHTML="<span class='chip "+cls+"' style='opacity:.72'>Meilleur créneau "+fmtHM(st)+" → "+fmtHM(en)+"</span>"
+          +"<span class='nowin' style='flex-basis:100%;margin-top:7px'>Pas de fenêtre franche : "+lim+". Ce créneau reste le plus favorable.</span>";
+      }else{
+        el.innerHTML="<span class='nowin'>Conditions défavorables toute la journée.</span>";
+      }
+      return;
+    }
     list.forEach(function(w){
       var c=document.createElement("span");
       c.className="chip "+cls;
@@ -1115,9 +1180,24 @@ function renderWindows(wins){
       el.appendChild(c);
     });
   };
-  fill("#winSurf",wins.surf,"surf");
-  fill("#winPeche",wins.peche,"peche");
-  fill("#winDrone",wins.drone,"drone");
+  fill("#winSurf",wins.surf,"surf",SURF,LAND?null:surfInfoAt);
+  fill("#winPeche",wins.peche,"peche",FISH,null);
+  fill("#winDrone",wins.drone,"drone",DRONE,null);
+  var sn=$("#surfNote");
+  if(sn){
+    var i0s=TODAY+DAY*24;
+    var cMax=null;
+    for(var q=0;q<EXT.length;q++){
+      var e=EXT[q];
+      if(e.type!=="PM"||e.coef==null)continue;
+      var hh=(e.t-parseLocal(M.hourly.time[i0s]))/3600000;
+      if(hh<0||hh>24)continue;
+      if(cMax==null||e.coef>cMax)cMax=e.coef;
+    }
+    var note=LAND?"":coefNote(cMax);
+    sn.style.display=note?"block":"none";
+    sn.textContent=note;
+  }
 }
 
 function renderTideTable(dayStart,dayEnd){
@@ -1979,7 +2059,7 @@ function fetchAll(la,lo,label,silent){
         finish(m,w,null);
       });
     }
-    var mu="https://marine-api.open-meteo.com/v1/marine?latitude="+pt.la+"&longitude="+pt.lo+"&hourly=sea_level_height_msl,wave_height,wave_period,wave_direction,sea_surface_temperature&timezone="+TZQ+"&past_days=7&forecast_days=8&cell_selection=sea";
+    var mu="https://marine-api.open-meteo.com/v1/marine?latitude="+pt.la+"&longitude="+pt.lo+"&hourly=sea_level_height_msl,wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction,sea_surface_temperature&timezone="+TZQ+"&past_days=7&forecast_days=8&cell_selection=sea";
     return Promise.all([fetch(mu).then(function(r){return r.json();}),getW()]).then(function(res){
       var m=res[0],w=res[1];
       if(!m||!m.hourly||!m.hourly.sea_level_height_msl)throw new Error("no-tide");
