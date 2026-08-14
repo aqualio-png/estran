@@ -359,7 +359,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v26</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v27</b></p>
     </div>
   </header>
 
@@ -472,7 +472,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
         <span class="radtime" id="radTime"></span>
       </div>
       <div id="rainNext"></div>
-      <p class="zhint">Observation radar réelle (RainViewer, image toutes les 10 min) : ce que les modèles ratent, le radar le montre. Les dernières images marquées «&nbsp;prévision&nbsp;» sont une extrapolation courte.</p>
+      <p class="zhint">Observation radar réelle (RainViewer, image toutes les 10 min), actualisée toutes les 5 minutes et à chaque retour dans Estran : ce que les modèles ratent, le radar le montre. Zoome pour le détail local. Les dernières images marquées «&nbsp;prévision&nbsp;» sont une extrapolation courte.</p>
     </section>
 
     <section class="card">
@@ -502,7 +502,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km via NOAA ERDDAP, MAJ quotidienne, au pixel de mer le plus proche du bord ; en secours et pour J+1 à J+4 : modèle Copernicus Marine au point en mer indiqué. L'étiquette de la tuile Eau précise la source affichée. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v26</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v27</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -1181,7 +1181,13 @@ function renderCond(i0){
   tile(sst!=null?frNum(sst,1)+" °C":"—","Eau","");
   tile(ws!=null?frNum(ws,0)+" km/h":"—","Vent",wdir!=null?compass(wdir):"");
   tile(wg!=null?frNum(wg,0)+" km/h":"—","Rafales","");
-  tile(pr!=null?frNum(pr,1)+" mm":"—","Pluie",prob!=null?frNum(prob,0)+" %":"");
+  var p15=(DAY===0)?precip15():null;
+  if(p15){
+    var wl15=wmoLabel(p15.wc);
+    tile(frNum(p15.pr,1)+" mm","Pluie 15 min",(wl15?wl15.e+" ":"")+fmtHM(p15.t));
+  }else{
+    tile(pr!=null?frNum(pr,1)+" mm":"—","Pluie",prob!=null?frNum(prob,0)+" %":"");
+  }
   tile(wh!=null?frNum(wh,1)+" m":"—","Vagues",wd!=null?compass(wd):"");
   tile(wp!=null?frNum(wp,0)+" s":"—","Période","");
   var sr=sunTimes(parseLocal(M.hourly.time[i0]));
@@ -1202,7 +1208,13 @@ function renderDroneNow(){
   var c=W&&W.current;
   if(!c||c.wind_speed_10m==null){el.style.display="none";return;}
   var ws=c.wind_speed_10m, wg=c.wind_gusts_10m, wdir=c.wind_direction_10m, pr=c.precipitation;
-  var wc=c.weather_code, wl=wmoLabel(wc);
+  var wc=c.weather_code;
+  var p15d=precip15();
+  if(p15d){
+    if(p15d.pr!=null&&(pr==null||p15d.pr>pr))pr=p15d.pr;
+    if(p15d.wc!=null&&p15d.wc>(wc==null?-1:wc))wc=p15d.wc;
+  }
+  var wl=wmoLabel(wc);
   var cls, verdict;
   if(wc!=null&&wc>=95){cls="no";verdict="Orage — au sol";}
   else if((pr!=null&&pr>0.1)||(wc!=null&&((wc>=61&&wc<=67)||(wc>=80&&wc<=86)))){cls="no";verdict="Pluie — au sol";}
@@ -1323,13 +1335,21 @@ function radarShow(i){
   if(!radar.map||!radar.frames.length)return;
   radar.idx=(i+radar.frames.length)%radar.frames.length;
   var f=radar.frames[radar.idx];
-  var url=radar.host+f.path+"/256/{z}/{x}/{y}/4/1_1.png";
-  var nl=L.tileLayer(url,{opacity:0.7,maxNativeZoom:7,maxZoom:11});
+  var url=radar.host+f.path+"/512/{z}/{x}/{y}/4/1_1.png";
+  var nl=L.tileLayer(url,{opacity:0.75,tileSize:512,zoomOffset:-1,maxNativeZoom:9,maxZoom:12});
   nl.addTo(radar.map);
   if(radar.layer)radar.map.removeLayer(radar.layer);
   radar.layer=nl;
   var tEl=$("#radTime");
-  if(tEl)tEl.textContent=fmtHM(new Date(f.time*1000))+(radar.idx>=radar.past?" (prévision)":"");
+  if(tEl){
+    var age=Math.round((Date.now()-f.time*1000)/60000);
+    var lbl=fmtHM(new Date(f.time*1000));
+    if(radar.idx>=radar.past)lbl+=" (prévision)";
+    else if(age<=1)lbl+=" (à l instant)";
+    else if(age<=25)lbl+=" (il y a "+age+" min)";
+    else lbl+=" ⚠ image de "+age+" min — actualisation…";
+    tEl.textContent=lbl;
+  }
 }
 function radarLoad(){
   fetch("https://api.rainviewer.com/public/weather-maps.json")
@@ -1340,7 +1360,7 @@ function radarLoad(){
       var past=j.radar.past||[], nc=j.radar.nowcast||[];
       radar.frames=past.concat(nc);
       radar.past=past.length;
-      if(radar.frames.length)radarShow(radar.past-1);
+      if(radar.frames.length&&!radar.timer)radarShow(radar.past-1);
     }).catch(function(){
       var tEl=$("#radTime");
       if(tEl)tEl.textContent="Radar indisponible";
@@ -1350,13 +1370,13 @@ function initRadar(){
   if(!window.L||state.la==null)return;
   var el=document.getElementById("radarMap");if(!el)return;
   if(radar.map){
-    radar.map.setView([state.la,state.lo],7);
+    radar.map.setView([state.la,state.lo],8);
     if(radar.marker)radar.marker.setLatLng([state.la,state.lo]);
     radar.map.invalidateSize();
     radarLoad();
     return;
   }
-  radar.map=L.map("radarMap",{zoomControl:true,maxZoom:11}).setView([state.la,state.lo],7);
+  radar.map=L.map("radarMap",{zoomControl:true,maxZoom:12}).setView([state.la,state.lo],8);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:11,attribution:"© OpenStreetMap · RainViewer"}).addTo(radar.map);
   var RMC=themeCols(THEME);
   radar.marker=L.circleMarker([state.la,state.lo],{radius:6,color:RMC.now,weight:2,fillColor:RMC.curve,fillOpacity:0.95}).addTo(radar.map);
@@ -1723,6 +1743,23 @@ function applyMode(){
   }
 }
 
+function precip15(){
+  if(!W||!W.minutely_15||!W.minutely_15.time||!W.minutely_15.precipitation)return null;
+  var t=W.minutely_15.time, pr=W.minutely_15.precipitation, wc=W.minutely_15.weather_code;
+  var now=Date.now(), best=-1, bd=Infinity;
+  for(var i=0;i<t.length;i++){
+    var d=Math.abs(parseLocal(t[i]).getTime()-now);
+    if(d<bd){bd=d;best=i;}
+  }
+  if(best<0||bd>40*60000)return null;
+  return {pr:pr[best],wc:wc?wc[best]:null,t:parseLocal(t[best])};
+}
+function radarStale(){
+  if(!radar.frames.length||!radar.past)return null;
+  var last=radar.frames[radar.past-1];
+  return (Date.now()-last.time*1000)/60000;
+}
+
 function renderDay(){
   var i0=TODAY+DAY*24;
   var dayStart=parseLocal(M.hourly.time[i0]);
@@ -1864,7 +1901,7 @@ function probeMarine(la,lo){
 
 function fetchAll(la,lo,label,silent){
   if(!silent)show("#loading");
-  var wu="https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,temperature_2m,weather_code&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m,weather_code&timezone="+TZQ+"&forecast_days=8&models=meteofrance_seamless";
+  var wu="https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,temperature_2m,weather_code&minutely_15=precipitation,weather_code&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m,weather_code&timezone="+TZQ+"&forecast_days=8&models=meteofrance_seamless";
   var uu="https://air-quality-api.open-meteo.com/v1/air-quality?latitude="+la+"&longitude="+lo+"&hourly=uv_index&timezone="+TZQ+"&forecast_days=7";
   var getW=function(){
     return Promise.all([
@@ -2034,6 +2071,7 @@ function init(){
   });
   $("#btnRetry").addEventListener("click",function(){locate(false);});
   $("#btnRefresh").addEventListener("click",function(){
+    if(radar.map)radarLoad();
     if(state.la!=null)fetchAll(state.la,state.lo,state.label,false);else locate(false);
   });
   var openModal=function(){renderFavs();$("#modal").classList.add("open");$("#q").focus();};
@@ -2079,10 +2117,14 @@ function init(){
   window.addEventListener("offline",renderAge);
   checkUpdate();
   document.addEventListener("visibilitychange",function(){
-    if(!document.hidden)checkUpdate();
+    if(document.hidden)return;
+    checkUpdate();
+    refreshCurrent();
+    if(radar.map&&!radar.timer)radarLoad();
   });
   setInterval(function(){if(M&&DAY===0)renderDay();},60000);
   setInterval(refreshCurrent,600000);
+  setInterval(function(){if(radar.map&&!radar.timer)radarLoad();},300000);
   var c=null;
   try{c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");}catch(e){}
   if(c&&c.M&&c.M.hourly&&cacheUsable(c.M.hourly.time,isoDate(new Date()))){
