@@ -116,6 +116,13 @@ body.mini{padding:0}
   display:block; text-align:center; margin-top:14px; background:var(--badgeBg); color:var(--badgeFg);
   border-radius:12px; padding:11px; font-weight:700; font-size:14px; text-decoration:none;
 }
+.landbar{
+  background:rgba(167,139,250,.14); border:1px solid rgba(167,139,250,.45); color:#B9A4FB;
+  border-radius:10px; padding:9px 12px; font-size:12.5px; font-weight:600; margin-bottom:10px; line-height:1.45;
+}
+body.land #surfCard,body.land #tideCard,body.land .hero .top,body.land #svgCurve,
+body.land .trk.surf,body.land .hscale{display:none}
+body.land .hero{padding-top:10px}
 .eclalert{
   background:rgba(228,213,180,.16); border:1px solid rgba(228,213,180,.5); color:var(--sand);
   border-radius:10px; padding:9px 12px; font-size:13px; font-weight:600; margin:10px 4px 0; line-height:1.45;
@@ -352,7 +359,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v25</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v26</b></p>
     </div>
   </header>
 
@@ -367,6 +374,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
   </div>
 
   <div class="agebar" id="ageBar" style="display:none"></div>
+  <div class="landbar" id="landBar" style="display:none"></div>
 
   <div id="loading"><span class="wv">🌊</span><br>Recherche de la position et des marées…</div>
 
@@ -403,16 +411,17 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
       </div>
     </section>
 
-    <section class="card">
+    <section class="card" id="surfCard">
       <h2><span class="sw" style="background:var(--surf)"></span>Fenêtres surf</h2>
       <div class="tstrip" id="surfTemps" style="display:none"></div>
       <div class="winrow" id="winSurf"></div>
     </section>
 
     <section class="card">
-      <h2><span class="sw" style="background:var(--peche)"></span>Fenêtres pêche du bord</h2>
+      <h2><span class="sw" style="background:var(--peche)"></span><span id="pecheTitle">Fenêtres pêche du bord</span></h2>
       <div class="moonrow" id="moonRow" style="display:none"></div>
       <div class="winrow" id="winPeche"></div>
+      <p class="zhint" id="pecheHint" style="display:none;margin-top:10px"></p>
     </section>
 
     <section class="card">
@@ -426,7 +435,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
       <div id="droneZone"><div class="zstat">En attente de position…</div></div>
     </section>
 
-    <section class="card">
+    <section class="card" id="tideCard">
       <h2><span class="sw" style="background:var(--sand)"></span>Marées du jour</h2>
       <table class="tides"><tbody id="tideRows"></tbody></table>
       <div class="cmprow">
@@ -493,7 +502,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km via NOAA ERDDAP, MAJ quotidienne, au pixel de mer le plus proche du bord ; en secours et pour J+1 à J+4 : modèle Copernicus Marine au point en mer indiqué. L'étiquette de la tuile Eau précise la source affichée. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v25</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v26</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -802,6 +811,43 @@ function eclCountdown(maxMs,nowMs){
   if(h>=1)return "dans "+h+" h "+pad2(m);
   return "dans "+m+" min";
 }
+/* Périodes solunaires : la Lune passe au méridien (majeure), à l'opposé (majeure),
+   et à mi-chemin (mineures, ~lever et coucher de la Lune). Jour lunaire = 24 h 50. */
+var LUNAR_DAY=24.8412*3600000;
+function moonTransitMs(solarNoonMs,elongDeg){
+  return solarNoonMs+(elongDeg/15)*3600000;
+}
+function solunarBoost(tMs,transitMs){
+  var d=(tMs-transitMs)%LUNAR_DAY;
+  if(d<0)d+=LUNAR_DAY;
+  var HD=LUNAR_DAY/2;
+  var dMaj=Math.min(d,Math.abs(d-HD),LUNAR_DAY-d);
+  var dMin=Math.min(Math.abs(d-HD/2),Math.abs(d-3*HD/2));
+  var H=3600000;
+  if(dMaj<=H)return {b:45,k:"majeure"};
+  if(dMaj<=1.6*H)return {b:28,k:"majeure"};
+  if(dMin<=0.8*H)return {b:26,k:"mineure"};
+  if(dMin<=1.4*H)return {b:15,k:"mineure"};
+  return {b:0,k:""};
+}
+function freshScore(tMs,transitMs,sunriseMs,sunsetMs,illum,wc,ws){
+  if(wc!=null&&wc>=95)return 0;
+  var sc=30+solunarBoost(tMs,transitMs).b;
+  var H=3600000;
+  if(sunriseMs&&Math.abs(tMs-sunriseMs)<=H)sc+=15;
+  else if(sunsetMs&&Math.abs(tMs-sunsetMs)<=H)sc+=15;
+  var fPhase=(illum==null)?1:(illum<0.1||illum>0.9)?1.12:(illum>0.4&&illum<0.6)?0.95:1;
+  var fW=1;
+  if(wc!=null){
+    if(wc===65||wc===67||wc===82)fW=0.6;
+    else if((wc>=51&&wc<=61)||wc===80)fW=1.05;
+  }
+  if(ws!=null){
+    if(ws>50)fW*=0.5;
+    else if(ws>35)fW*=0.75;
+  }
+  return clamp(Math.round(sc*fPhase*fW),0,100);
+}
 /* ==================== /PURE ==================== */
 
 function toast(msg){
@@ -874,6 +920,23 @@ function scoreSurfAt(i){
     }else if(ws!=null){fw=ws<15?0.9:ws<25?0.7:0.5;}
   }
   return clamp(Math.round(base*fh*fp*fw),0,100);
+}
+var LAND=false;
+function solarNoonAt(t){
+  var sr=sunTimes(t);
+  if(!sr)return new Date(t.getFullYear(),t.getMonth(),t.getDate(),13,30).getTime();
+  return (sr.rise.getTime()+sr.set.getTime())/2;
+}
+function scoreFreshAt(i){
+  var t=parseLocal(M.hourly.time[i]);
+  var sn=solarNoonAt(t);
+  var tr=moonTransitMs(sn,moonElong(new Date(sn)));
+  var sr=sunTimes(t);
+  var wi=widx(i);
+  var wc=(wi!=null&&W.hourly.weather_code)?W.hourly.weather_code[wi]:null;
+  var ws=(wi!=null&&W.hourly.wind_speed_10m)?W.hourly.wind_speed_10m[wi]:null;
+  return freshScore(t.getTime(),tr,sr?sr.rise.getTime():null,sr?sr.set.getTime():null,
+                    moonInfo(t).illum,wc,ws);
 }
 function scoreFishAt(i){
   var t=parseLocal(M.hourly.time[i]);
@@ -1645,12 +1708,27 @@ function renderMini(){
   el.innerHTML=h;
 }
 
+function applyMode(){
+  var cls=document.body.className.replace(/\s*land\b/,"");
+  document.body.className=cls+(LAND?" land":"");
+  var lb=$("#landBar"), ti=$("#pecheTitle"), hi=$("#pecheHint");
+  if(lb){
+    lb.style.display=LAND?"block":"none";
+    if(LAND)lb.innerHTML="🏞️ Mode intérieur des terres — pas de marée ici. Pêche calculée sur les périodes lunaires, plus drone, météo, radar, lune et éclipses. Choisis un spot côtier (favoris ou recherche) pour retrouver les marées et le surf.";
+  }
+  if(ti)ti.textContent=LAND?"Pêche en eau douce — périodes lunaires":"Fenêtres pêche du bord";
+  if(hi){
+    hi.style.display=LAND?"block":"none";
+    if(LAND)hi.innerHTML="Périodes solunaires : la Lune au méridien et à l'opposé (périodes <b>majeures</b>), et à mi-chemin, proche de son lever et de son coucher (périodes <b>mineures</b>). S'y ajoutent l'aube et le crépuscule, la phase lunaire et la météo. Heures calculées localement (précision ~30 min) — c'est une aide empirique, pas une science exacte.";
+  }
+}
+
 function renderDay(){
   var i0=TODAY+DAY*24;
   var dayStart=parseLocal(M.hourly.time[i0]);
   var dayEnd=new Date(dayStart.getTime()+86400000);
   renderHead(dayStart,dayEnd);
-  renderCurve(i0);
+  if(!LAND)renderCurve(i0);
   var wins=renderTracks(i0);
   renderWindows(wins);
   renderTideTable(dayStart,dayEnd);
@@ -1682,8 +1760,13 @@ function processAll(){
   if(TODAY<0)TODAY=7*24;
   SURF=[];FISH=[];DRONE=[];
   var end=Math.min(M.hourly.time.length,TODAY+5*24);
-  for(var i=TODAY;i<end;i++){SURF[i]=scoreSurfAt(i);FISH[i]=scoreFishAt(i);DRONE[i]=scoreDroneAt(i);}
+  for(var i=TODAY;i<end;i++){
+    SURF[i]=LAND?0:scoreSurfAt(i);
+    FISH[i]=LAND?scoreFreshAt(i):scoreFishAt(i);
+    DRONE[i]=scoreDroneAt(i);
+  }
   DAY=0;
+  applyMode();
   var dotEl=document.querySelector("#locPill .dot");
   if(dotEl){
     if(/approx\. IP/.test(state.label||""))dotEl.classList.add("approx");
@@ -1781,35 +1864,51 @@ function probeMarine(la,lo){
 
 function fetchAll(la,lo,label,silent){
   if(!silent)show("#loading");
-  probeMarine(la,lo).then(function(pt){
-    if(!pt)throw new Error("no-tide");
-    var mu="https://marine-api.open-meteo.com/v1/marine?latitude="+pt.la+"&longitude="+pt.lo+"&hourly=sea_level_height_msl,wave_height,wave_period,wave_direction,sea_surface_temperature&timezone="+TZQ+"&past_days=7&forecast_days=8&cell_selection=sea";
-    var wu="https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,temperature_2m,weather_code&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m,weather_code&timezone="+TZQ+"&forecast_days=8&models=meteofrance_seamless";
-    var uu="https://air-quality-api.open-meteo.com/v1/air-quality?latitude="+la+"&longitude="+lo+"&hourly=uv_index&timezone="+TZQ+"&forecast_days=7";
+  var wu="https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,temperature_2m,weather_code&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m,weather_code&timezone="+TZQ+"&forecast_days=8&models=meteofrance_seamless";
+  var uu="https://air-quality-api.open-meteo.com/v1/air-quality?latitude="+la+"&longitude="+lo+"&hourly=uv_index&timezone="+TZQ+"&forecast_days=7";
+  var getW=function(){
     return Promise.all([
-      fetch(mu).then(function(r){return r.json();}),
       fetch(wu).then(function(r){return r.json();}),
       fetch(uu).then(function(r){return r.json();}).catch(function(){return null;})
     ]).then(function(res){
+      var w=res[0];
+      if(!w||!w.hourly||!w.hourly.time)throw new Error("no-weather");
+      if(res[1]&&res[1].hourly&&res[1].hourly.uv_index)w.hourly.uv_index=res[1].hourly.uv_index;
+      return w;
+    });
+  };
+  var finish=function(m,w,pt){
+    M=m;W=w;LAND=!pt;
+    state.la=la;state.lo=lo;state.at=Date.now();
+    state.mla=pt?pt.la:null;state.mlo=pt?pt.lo:null;
+    state.label=label||state.label||"Position GPS";
+    $("#locName").textContent=state.label;
+    try{localStorage.setItem(CACHE_KEY,JSON.stringify({la:la,lo:lo,mla:state.mla,mlo:state.mlo,land:LAND,label:state.label,at:state.at,M:m,W:w}));}catch(e){}
+    processAll();
+    state.sst=null;
+    if(!LAND)fetchSSTsat();
+    if(silent)toast("Données actualisées");
+    else if(LAND)toast("Aucune marée ici — mode intérieur des terres");
+  };
+  probeMarine(la,lo).then(function(pt){
+    if(!pt){
+      return getW().then(function(w){
+        var n=w.hourly.time.length, nulls=[];
+        for(var k=0;k<n;k++)nulls.push(null);
+        var m={hourly:{time:w.hourly.time.slice(),sea_level_height_msl:nulls,
+          wave_height:nulls,wave_period:nulls,wave_direction:nulls,sea_surface_temperature:nulls}};
+        finish(m,w,null);
+      });
+    }
+    var mu="https://marine-api.open-meteo.com/v1/marine?latitude="+pt.la+"&longitude="+pt.lo+"&hourly=sea_level_height_msl,wave_height,wave_period,wave_direction,sea_surface_temperature&timezone="+TZQ+"&past_days=7&forecast_days=8&cell_selection=sea";
+    return Promise.all([fetch(mu).then(function(r){return r.json();}),getW()]).then(function(res){
       var m=res[0],w=res[1];
       if(!m||!m.hourly||!m.hourly.sea_level_height_msl)throw new Error("no-tide");
-      if(res[2]&&res[2].hourly&&res[2].hourly.uv_index)w.hourly.uv_index=res[2].hourly.uv_index;
-      M=m;W=w;
-      state.la=la;state.lo=lo;state.mla=pt.la;state.mlo=pt.lo;state.at=Date.now();
-      state.label=label||state.label||"Position GPS";
-      $("#locName").textContent=state.label;
-      try{localStorage.setItem(CACHE_KEY,JSON.stringify({la:la,lo:lo,mla:pt.la,mlo:pt.lo,label:state.label,at:Date.now(),M:m,W:w}));}catch(e){}
-      processAll();
-      state.sst=null;
-      fetchSSTsat();
-      if(silent)toast("Données actualisées");
+      finish(m,w,pt);
     });
   }).catch(function(err){
     if(silent||M){renderAge();if(!silent)toast("Hors ligne — données en cache conservées");return;}
-    var msg=err&&err.message==="no-tide"
-      ?"Pas de marée modélisée ici, même en sondant ~25 km à la ronde. Cherche un spot côtier."
-      :"Impossible de charger les données. Vérifie ta connexion.";
-    $("#errMsg").textContent=msg;
+    $("#errMsg").textContent="Impossible de charger les données. Vérifie ta connexion.";
     show("#err");
   });
 }
@@ -1838,7 +1937,7 @@ function gpsHardFail(silent,why){
   if(silent)return;
   var c=null;
   try{c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");}catch(e){}
-  if(c&&c.M){M=c.M;W=c.W;state.la=c.la;state.lo=c.lo;state.mla=c.mla;state.mlo=c.mlo;state.label=c.label;state.sst=c.sst||null;state.at=c.at||0;
+  if(c&&c.M){M=c.M;W=c.W;state.la=c.la;state.lo=c.lo;state.mla=c.mla;state.mlo=c.mlo;state.label=c.label;state.sst=c.sst||null;state.at=c.at||0;LAND=!!c.land;
     $("#locName").textContent=c.label;processAll();toast(why);return;}
   $("#errMsg").textContent=why+" Tu peux aussi chercher un spot manuellement.";
   show("#err");
@@ -1987,7 +2086,7 @@ function init(){
   var c=null;
   try{c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");}catch(e){}
   if(c&&c.M&&c.M.hourly&&cacheUsable(c.M.hourly.time,isoDate(new Date()))){
-    M=c.M;W=c.W;state.la=c.la;state.lo=c.lo;state.mla=c.mla;state.mlo=c.mlo;state.label=c.label;state.sst=c.sst||null;state.at=c.at||0;
+    M=c.M;W=c.W;state.la=c.la;state.lo=c.lo;state.mla=c.mla;state.mlo=c.mlo;state.label=c.label;state.sst=c.sst||null;state.at=c.at||0;LAND=!!c.land;
     $("#locName").textContent=c.label||"Dernier spot";
     processAll();
     renderAge();
