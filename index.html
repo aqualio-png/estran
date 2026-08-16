@@ -197,10 +197,10 @@ svg.curve{display:block; width:100%; height:auto; margin-top:6px}
 .trk{display:flex; align-items:center; gap:8px; margin-top:7px}
 .trk .tl{flex:none; width:44px; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--mist); font-weight:600}
 .trk .bar{flex:1; height:11px; border-radius:5px; background:var(--track); position:relative; overflow:hidden}
-.trk .seg{position:absolute; top:0; bottom:0; border-radius:4px}
+.trk .seg{position:absolute; top:0; bottom:0; border-radius:4px; z-index:2}
 .trk.surf .seg{background:var(--surf)}
 .trk.peche .seg{background:var(--peche)}
-.trk .seg.ghost{top:0; bottom:0; opacity:.85; border:none}
+.trk .seg.ghost{background:var(--mist)}
 .trk .trkrow{cursor:pointer}
 .hscale{display:flex; justify-content:space-between; color:var(--mist); font-size:9.5px; font-family:"Spline Sans Mono",monospace; padding:4px 4px 0}
 /* ---------- cards ---------- */
@@ -361,7 +361,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v34</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v35</b></p>
     </div>
   </header>
 
@@ -409,7 +409,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
         <div class="trk surf" id="trkSurf"><span class="tl">Surf</span><div class="bar" id="barSurf"></div></div>
         <div class="trk peche" id="trkPeche"><span class="tl">Pêche</span><div class="bar" id="barPeche"></div></div>
         <div class="trk drone" id="trkDrone"><span class="tl">Drone</span><div class="bar" id="barDrone"></div></div>
-        <p class="zhint" style="margin:8px 4px 0;font-size:10.5px">Barre pleine = fenêtre favorable · barre hachurée = meilleur créneau faute de mieux. Appuie sur une ligne pour le détail.</p>
+        <p class="zhint" style="margin:8px 4px 0;font-size:10.5px">Barre colorée = fenêtre favorable · barre grise = meilleur créneau faute de mieux. Appuie sur une ligne pour le détail.</p>
       <div class="hscale"><span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>24h</span></div>
       </div>
     </section>
@@ -507,7 +507,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v34</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v35</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -1149,7 +1149,7 @@ function renderTracks(i0){
       return (v&&v.trim())?v.trim():fb;
     }catch(e){return fb;}
   };
-  var GHOST={"#barSurf":cssVar("--surf","#49C6D6"),"#barPeche":cssVar("--peche","#E7A94E"),"#barDrone":"#A78BFA"};
+  var GHOST={neutre:cssVar("--mist","#89A9B6")};
   var mk=function(barId,scores,thr){
     var bar=$(barId);bar.innerHTML="";
     var wins=buildWindows(scores,i0,i0+24,thr);
@@ -1167,14 +1167,7 @@ function renderTracks(i0){
         g.className="seg ghost";
         g.style.left=((bb.a-i0)/24*100)+"%";
         g.style.width=((bb.b-bb.a+1)/24*100)+"%";
-        var gc=GHOST[barId]||"#888";
-        g.style.backgroundColor=gc;
-        g.style.backgroundImage="repeating-linear-gradient(45deg,rgba(255,255,255,.65) 0 4px,rgba(255,255,255,0) 4px 8px)";
-        g.style.border="none";
-        g.style.top="0";
-        g.style.bottom="0";
-        g.style.borderRadius="4px";
-        g.style.opacity="0.85";
+        g.style.background=GHOST.neutre;
         g.title="Meilleur créneau (pas de fenêtre franche)";
         bar.appendChild(g);
       }
