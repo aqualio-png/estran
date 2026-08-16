@@ -200,10 +200,8 @@ svg.curve{display:block; width:100%; height:auto; margin-top:6px}
 .trk .seg{position:absolute; top:0; bottom:0; border-radius:4px}
 .trk.surf .seg{background:var(--surf)}
 .trk.peche .seg{background:var(--peche)}
-.trk .seg.ghost{top:3px; bottom:3px; border-radius:3px; opacity:.8; border:none}
-.trk.surf .seg.ghost{background:var(--surf)}
-.trk.peche .seg.ghost{background:var(--peche)}
-.trk.drone .seg.ghost{background:#A78BFA}
+.trk .seg.ghost{top:0; bottom:0; opacity:.85; border:none}
+.trk .trkrow{cursor:pointer}
 .hscale{display:flex; justify-content:space-between; color:var(--mist); font-size:9.5px; font-family:"Spline Sans Mono",monospace; padding:4px 4px 0}
 /* ---------- cards ---------- */
 .card{
@@ -321,7 +319,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
 .toast{
   position:fixed; left:50%; bottom:26px; transform:translateX(-50%);
   background:var(--badgeBg); color:var(--badgeFg); font-weight:600; font-size:13px;
-  padding:10px 18px; border-radius:14px; z-index:60; opacity:0; transition:opacity .25s;
+  padding:11px 16px; border-radius:14px; z-index:60; opacity:0; transition:opacity .25s;
   pointer-events:none; white-space:normal; max-width:92vw; width:max-content; text-align:center; line-height:1.4;
 }
 .toast.show{opacity:1}
@@ -363,7 +361,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v33</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v34</b></p>
     </div>
   </header>
 
@@ -408,10 +406,10 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
       <div class="eclalert" id="eclAlert" style="display:none"></div>
       <svg class="curve" id="svgCurve" viewBox="0 0 360 132" preserveAspectRatio="none" aria-label="Courbe de marée"></svg>
       <div class="tracks">
-        <div class="trk surf"><span class="tl">Surf</span><div class="bar" id="barSurf"></div></div>
-        <div class="trk peche"><span class="tl">Pêche</span><div class="bar" id="barPeche"></div></div>
-        <div class="trk drone"><span class="tl">Drone</span><div class="bar" id="barDrone"></div></div>
-        <p class="zhint" style="margin:8px 4px 0;font-size:10.5px">Barre épaisse = fenêtre favorable · barre fine = meilleur créneau faute de mieux</p>
+        <div class="trk surf" id="trkSurf"><span class="tl">Surf</span><div class="bar" id="barSurf"></div></div>
+        <div class="trk peche" id="trkPeche"><span class="tl">Pêche</span><div class="bar" id="barPeche"></div></div>
+        <div class="trk drone" id="trkDrone"><span class="tl">Drone</span><div class="bar" id="barDrone"></div></div>
+        <p class="zhint" style="margin:8px 4px 0;font-size:10.5px">Barre pleine = fenêtre favorable · barre hachurée = meilleur créneau faute de mieux. Appuie sur une ligne pour le détail.</p>
       <div class="hscale"><span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>24h</span></div>
       </div>
     </section>
@@ -509,7 +507,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v33</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v34</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -916,7 +914,7 @@ function freshScore(tMs,transitMs,sunriseMs,sunsetMs,illum,wc,ws){
 
 function toast(msg){
   var t=$("#toast");t.textContent=msg;t.classList.add("show");
-  setTimeout(function(){t.classList.remove("show");},2600);
+  setTimeout(function(){t.classList.remove("show");},(msg&&msg.length>70)?5200:2600);
 }
 function show(id){
   ["#loading","#err","#app"].forEach(function(s){$(s).style.display=(s===id?"block":"none");});
@@ -1010,6 +1008,7 @@ function surfInfoAt(i){
   return surfLimiter(wh,wp,ws,diff);
 }
 var LAND=false;
+var TRKMSG={};
 function solarNoonAt(t){
   var sr=sunTimes(t);
   if(!sr)return new Date(t.getFullYear(),t.getMonth(),t.getDate(),13,30).getTime();
@@ -1169,19 +1168,43 @@ function renderTracks(i0){
         g.style.left=((bb.a-i0)/24*100)+"%";
         g.style.width=((bb.b-bb.a+1)/24*100)+"%";
         var gc=GHOST[barId]||"#888";
-        g.style.background=gc;
+        g.style.backgroundColor=gc;
+        g.style.backgroundImage="repeating-linear-gradient(45deg,rgba(255,255,255,.65) 0 4px,rgba(255,255,255,0) 4px 8px)";
         g.style.border="none";
-        g.style.top="3px";
-        g.style.bottom="3px";
-        g.style.borderRadius="3px";
-        g.style.opacity="0.8";
-        g.title="Meilleur créneau (barre fine = pas de fenêtre franche)";
+        g.style.top="0";
+        g.style.bottom="0";
+        g.style.borderRadius="4px";
+        g.style.opacity="0.85";
+        g.title="Meilleur créneau (pas de fenêtre franche)";
         bar.appendChild(g);
       }
     }
     return wins;
   };
-  return {surf:mk("#barSurf",SURF,62),peche:mk("#barPeche",FISH,62),drone:mk("#barDrone",DRONE,70)};
+  var res={surf:mk("#barSurf",SURF,62),peche:mk("#barPeche",FISH,62),drone:mk("#barDrone",DRONE,70)};
+  var lbl={surf:"Surf",peche:(LAND?"Pêche en eau douce":"Pêche du bord"),drone:"Vol drone"};
+  var scoresOf={surf:SURF,peche:FISH,drone:DRONE};
+  var ids={surf:"#trkSurf",peche:"#trkPeche",drone:"#trkDrone"};
+  TRKMSG={};
+  ["surf","peche","drone"].forEach(function(k){
+    var list=res[k], txt;
+    if(list.length){
+      txt=lbl[k]+" — "+list.length+(list.length>1?" fenêtres favorables : ":" fenêtre favorable : ")
+        +list.map(function(w){return fmtHM(w.start)+"→"+fmtHM(w.end)+" "+starsTxt(w.stars);}).join(", ");
+    }else{
+      var bb=bestBlock(scoresOf[k],i0,i0+24,2);
+      if(bb&&bb.avg>0){
+        var st=fmtHM(parseLocal(M.hourly.time[bb.a]));
+        var en=fmtHM(new Date(parseLocal(M.hourly.time[bb.b]).getTime()+3600000));
+        var why=(k==="surf"&&!LAND)?surfInfoAt(Math.round((bb.a+bb.b)/2)):"conditions modestes";
+        txt=lbl[k]+" — aucune fenêtre franche ("+why+"). Meilleur créneau : "+st+"→"+en+".";
+      }else txt=lbl[k]+" — conditions défavorables toute la journée.";
+    }
+    TRKMSG[k]=txt;
+    var row=$(ids[k]);
+    if(row){row.title=txt;row.className=row.className.indexOf("trkrow")>=0?row.className:row.className+" trkrow";}
+  });
+  return res;
 }
 
 function starsTxt(n){return n===3?"★★★":n===2?"★★☆":"★☆☆";}
@@ -2250,6 +2273,12 @@ function init(){
   try{th=localStorage.getItem("estran_theme")||"night";}catch(e){}
   applyTheme(th,true);
   $("#btnTheme").addEventListener("click",cycleTheme);
+  [["#trkSurf","surf"],["#trkPeche","peche"],["#trkDrone","drone"]].forEach(function(pair){
+    var row=$(pair[0]);
+    if(row)row.addEventListener("click",function(){
+      if(TRKMSG[pair[1]])toast(TRKMSG[pair[1]]);
+    });
+  });
   var APP_URL="https://aqualio-png.github.io/estran/";
   $("#btnShare").addEventListener("click",function(){
     if(navigator.share){
