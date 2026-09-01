@@ -361,7 +361,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v36</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v37</b></p>
     </div>
   </header>
 
@@ -449,10 +449,14 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
       </div>
       <div class="cmprow"><button class="cmp" id="btnCal" style="width:100%">⚙ Caler sur les valeurs officielles</button></div>
       <div id="calPanel" style="display:none">
-        <p class="zhint" style="margin-top:10px">1. Ouvre marée.info ci-dessus · 2. Note une <b>pleine mer officielle du jour</b> (+ son coef) · 3. Saisis-la ici :</p>
+        <p class="zhint" style="margin-top:10px">1. Ouvre marée.info ci-dessus · 2. Note une <b>pleine mer officielle du jour</b> : heure, coef, et si possible les hauteurs PM et BM en mètres · 3. Saisis-les ici (les hauteurs calent l échelle sur le zéro SHOM) :</p>
         <div class="calrow">
           <label class="callbl">Heure PM officielle<input type="time" id="calTime"></label>
           <label class="callbl">Coef officiel (option)<input type="number" id="calCoef" min="20" max="120" inputmode="numeric" placeholder="ex : 87"></label>
+        </div>
+        <div class="calrow">
+          <label class="callbl">Hauteur PM (m)<input type="number" id="calHpm" step="0.01" min="0" max="15" inputmode="decimal" placeholder="ex : 3.67"></label>
+          <label class="callbl">Hauteur BM (m)<input type="number" id="calHbm" step="0.01" min="0" max="15" inputmode="decimal" placeholder="ex : 1.02"></label>
         </div>
         <div class="cmprow">
           <button class="cmp" id="calApply" style="background:var(--badgeBg);color:var(--badgeFg);border-color:var(--badgeBg)">Appliquer</button>
@@ -505,9 +509,9 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
 
     <footer>
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
-      Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
+      Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v36</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v37</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -735,6 +739,37 @@ function calDelta(pmMs,offMs){
     if(best==null||Math.abs(diff)<Math.abs(best))best=diff;
   }
   return best;
+}
+function fitHeights(hPmMod,hBmMod,HPmOff,HBmOff){
+  if(hPmMod==null||hBmMod==null||HPmOff==null||HBmOff==null)return null;
+  var dMod=hPmMod-hBmMod, dOff=HPmOff-HBmOff;
+  if(!(dMod>0.2)||!(dOff>0.2))return null;
+  var a=dOff/dMod;
+  if(a<0.3||a>4)return null;
+  return {a:a,b:HPmOff-a*hPmMod};
+}
+function fitCoef(pts){
+  if(!pts||!pts.length)return null;
+  if(pts.length===1)return {p:1,q:pts[0].off-pts[0].raw};
+  var n=pts.length,sx=0,sy=0,sxy=0,sxx=0,i;
+  for(i=0;i<n;i++){sx+=pts[i].raw;sy+=pts[i].off;sxy+=pts[i].raw*pts[i].off;sxx+=pts[i].raw*pts[i].raw;}
+  var den=n*sxx-sx*sx;
+  if(Math.abs(den)<1e-6)return {p:1,q:(sy-sx)/n};
+  var pp=(n*sxy-sx*sy)/den;
+  var qq=(sy-pp*sx)/n;
+  if(pp<0.5||pp>2||Math.abs(qq)>45)return {p:1,q:(sy-sx)/n};
+  return {p:pp,q:qq};
+}
+function applyFitCoef(raw,cp){
+  if(raw==null)return null;
+  if(!cp)return raw;
+  return clamp(Math.round(cp.p*raw+cp.q),20,120);
+}
+function addCoefPoint(pts,raw,off){
+  var out=[],i;
+  for(i=0;i<(pts||[]).length;i++){if(Math.abs(pts[i].raw-raw)>3)out.push(pts[i]);}
+  out.push({raw:raw,off:off});
+  return out.slice(-6);
 }
 function bestBlock(scores,i0,i1,len){
   var best=null;
@@ -1246,11 +1281,12 @@ function renderTideTable(dayStart,dayEnd){
     if(ex.t<dayStart||ex.t>=dayEnd)continue;
     rows++;
     var tr=document.createElement("tr");
-    var sign=ex.h>=0?"+":"−";
+    var hv=calH(ex.h);
+    var sign=hv>=0?"+":"−";
     var coefCell=(ex.type==="PM"&&ex.coef!=null)?("<td class='t-c'>"+ex.coef+"<small>coef</small></td>"):"<td class='t-c'></td>";
     tr.innerHTML="<td><span class='badge "+(ex.type==="PM"?"pm":"bm")+"'>"+(ex.type==="PM"?"Pleine mer":"Basse mer")+"</span></td>"+
       "<td class='t-time'>"+fmtHM(ex.t)+"</td>"+
-      "<td class='t-h'>"+sign+frNum(Math.abs(ex.h),2)+" m</td>"+coefCell;
+      "<td class='t-h'>"+(CAL.a!=null?frNum(hv,2):sign+frNum(Math.abs(hv),2))+" m</td>"+coefCell;
     tb.appendChild(tr);
   }
   if(!rows)tb.innerHTML="<tr><td class='nowin'>Aucun extremum détecté ce jour.</td></tr>";
@@ -1287,7 +1323,7 @@ function renderHead(dayStart,dayEnd){
     if(x.t>=dayStart&&x.t<dayEnd&&x.type==="PM")pms.push(fmtHM(x.t));
   }
   $("#ntBig").textContent=pms.length?pms.join(" · "):"—";
-  $("#ntSub").textContent=pmMax&&pmMax.semi!=null?("marnage ≈ "+frNum(2*pmMax.semi,1)+" m"):"";
+  $("#ntSub").textContent=pmMax&&pmMax.semi!=null?("marnage ≈ "+frNum(calRange(2*pmMax.semi),1)+" m"):"";
   $("#coefNum").textContent=pmMax&&pmMax.coef!=null?pmMax.coef:"—";
   $("#coefTag").textContent=pmMax&&pmMax.coef!=null?coefLabel(pmMax.coef):"";
 }
@@ -1589,20 +1625,36 @@ function renderRainNext(){
 var CAL={dt:0,dc:0,on:false};
 function calKey(){return spotKey(state.la,state.lo);}
 function loadCal(){
-  CAL={dt:0,dc:0,on:false};
+  CAL={dt:0,dc:0,pts:[],cp:null,a:null,b:null,on:false};
   if(state.la==null)return;
   try{
     var all=JSON.parse(localStorage.getItem("estran_cal")||"{}");
     var c=all[calKey()];
-    if(c&&typeof c.dt==="number")CAL={dt:c.dt,dc:c.dc||0,pm:c.pm||"",off:c.off||"",on:true};
+    if(c&&typeof c.dt==="number"){
+      CAL={dt:c.dt,dc:c.dc||0,pts:c.pts||[],cp:null,
+           a:(typeof c.a==="number"?c.a:null),b:(typeof c.b==="number"?c.b:null),
+           pm:c.pm||"",off:c.off||"",on:true};
+      CAL.cp=fitCoef(CAL.pts);
+      if(!CAL.cp&&CAL.dc)CAL.cp={p:1,q:CAL.dc};
+    }
   }catch(e){}
 }
-function saveCal(dt,dc,pm,off){
+function saveCal(o){
   try{
     var all=JSON.parse(localStorage.getItem("estran_cal")||"{}");
-    all[calKey()]={dt:dt,dc:dc,pm:pm||"",off:off||"",at:Date.now()};
+    o.at=Date.now();
+    all[calKey()]=o;
     localStorage.setItem("estran_cal",JSON.stringify(all));
   }catch(e){}
+}
+function calH(h){
+  if(h==null)return null;
+  if(CAL.a!=null&&CAL.b!=null)return CAL.a*h+CAL.b;
+  return h;
+}
+function calRange(d){
+  if(d==null)return null;
+  return (CAL.a!=null)?CAL.a*d:d;
 }
 function clearCal(){
   try{
@@ -1616,9 +1668,9 @@ function renderCalStatus(){
   if(CAL.on){
     el.style.display="block";
     var sdt=(CAL.dt>=0?"+":"−")+Math.abs(CAL.dt)+" min";
-    var sdc=CAL.dc?(" · coef "+(CAL.dc>0?"+":"−")+Math.abs(CAL.dc)):"";
-    var det=(CAL.pm&&CAL.off)?(" · PM "+CAL.pm+" → "+CAL.off):"";
-    el.innerHTML="✓ Calé sur l'officiel pour ce spot ("+sdt+sdc+det+") — <a href='#' id='calReset' style='color:var(--surf)'>réinitialiser</a>";
+    var sdc=(CAL.pts&&CAL.pts.length)?(" · coef ajusté sur "+CAL.pts.length+" relevé"+(CAL.pts.length>1?"s":"")):(CAL.dc?(" · coef "+(CAL.dc>0?"+":"−")+Math.abs(CAL.dc)):"");
+    var sh=(CAL.a!=null)?" · hauteurs SHOM (×"+frNum(CAL.a,2)+" "+(CAL.b>=0?"+":"−")+frNum(Math.abs(CAL.b),2)+" m)":"";
+    el.innerHTML="✓ Calé sur l'officiel pour ce spot ("+sdt+sdc+sh+") — <a href='#' id='calReset' style='color:var(--surf)'>réinitialiser</a>";
     var r=$("#calReset");
     if(r)r.addEventListener("click",function(ev){
       ev.preventDefault();clearCal();processAll();toast("Calage supprimé — retour au modèle");
@@ -1661,15 +1713,38 @@ function applyCal(){
   var rawPM=new Date(raws[mm.i]);
   var bd=mm.d;
   var dt=Math.round(bd/60000);
-  var dc=0, cv=parseInt($("#calCoef").value,10);
-  if(!isNaN(cv)&&best.coef!=null){
-    var rawCoef=best.coef-(CAL.on?CAL.dc:0);
-    dc=clamp(cv-rawCoef,-30,30);
+  var rawCoef=(best.raw!=null)?best.raw:best.coef;
+  var pts=(CAL.pts||[]).slice();
+  var dc=CAL.dc||0;
+  var cv=parseInt($("#calCoef").value,10);
+  if(!isNaN(cv)&&rawCoef!=null){
+    pts=addCoefPoint(pts,rawCoef,clamp(cv,20,130));
+    dc=clamp(cv-rawCoef,-40,40);
   }
-  saveCal(dt,dc,fmtHM(rawPM),fmtHM(off));
+  var aH=CAL.a, bH=CAL.b, hMsg="";
+  var HPm=parseFloat(String($("#calHpm").value).replace(",","."));
+  var HBm=parseFloat(String($("#calHbm").value).replace(",","."));
+  if(!isNaN(HPm)&&!isNaN(HBm)){
+    var bmNear=null,bd2=null;
+    for(var z=0;z<EXT.length;z++){
+      var e2=EXT[z];
+      if(e2.type!=="BM")continue;
+      var d2=Math.abs(e2.t-best.t);
+      if(d2>9*3600000)continue;
+      if(bd2==null||d2<bd2){bd2=d2;bmNear=e2;}
+    }
+    if(!bmNear){calFail("Impossible de trouver la basse mer voisine dans le modèle — réessaie sans les hauteurs.");return;}
+    var fit=fitHeights(best.h,bmNear.h,HPm,HBm);
+    if(!fit){calFail("Hauteurs incohérentes (PM doit être supérieure à BM, écart d au moins 0,2 m).");return;}
+    aH=fit.a;bH=fit.b;
+    hMsg=" · hauteurs SHOM";
+  }
+  saveCal({dt:dt,dc:dc,pts:pts,a:aH,b:bH,pm:fmtHM(rawPM),off:fmtHM(off)});
   $("#calPanel").style.display="none";
   processAll();
-  toast("Calage appliqué : "+(dt>=0?"+":"−")+Math.abs(dt)+" min"+(dc?" · coef "+(dc>0?"+":"−")+Math.abs(dc):""));
+  var cpNow=fitCoef(pts);
+  var cMsg=cpNow?(" · coef ajusté ("+pts.length+" relevé"+(pts.length>1?"s":"")+")"):"";
+  toast("Calage appliqué : "+(dt>=0?"+":"−")+Math.abs(dt)+" min"+cMsg+hMsg);
 }
 
 /* ---------- mise à jour automatique ---------- */
@@ -1950,7 +2025,10 @@ function processAll(){
   if(CAL.on){
     for(var ci=0;ci<EXT.length;ci++){
       EXT[ci].t=new Date(EXT[ci].t.getTime()+CAL.dt*60000);
-      if(EXT[ci].coef!=null)EXT[ci].coef=clamp(EXT[ci].coef+CAL.dc,20,120);
+      if(EXT[ci].coef!=null){
+        EXT[ci].raw=EXT[ci].coef;
+        EXT[ci].coef=CAL.cp?applyFitCoef(EXT[ci].coef,CAL.cp):clamp(EXT[ci].coef+CAL.dc,20,120);
+      }
     }
   }
   var now=new Date();
