@@ -360,6 +360,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
 .dalt .altverdict.ok{color:var(--ok)} .dalt .altverdict.warn{color:var(--peche)} .dalt .altverdict.no{color:var(--bad)}
 .dalt .altconseil{margin-top:8px; font-size:12.5px; line-height:1.4; color:var(--foam)}
 .dalt .altconseil.warn{color:var(--peche)} .dalt .altconseil.no{color:var(--bad)}
+.dalt .altdir{margin-top:8px; color:var(--surf); font-size:12px; line-height:1.4; font-weight:600}
 .dalt .altnote{margin-top:6px; color:var(--mist); font-size:10.5px; letter-spacing:.04em}
 body.sun .dalt{border-width:2px}
 /* températures surf */
@@ -384,7 +385,7 @@ body.sun .dalt{border-width:2px}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v39</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v40</b></p>
     </div>
   </header>
 
@@ -535,7 +536,7 @@ body.sun .dalt{border-width:2px}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v39</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v40</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -692,6 +693,18 @@ function droneCeil(v10){
   if(v10>=20)return 10;
   var h=10*Math.pow(20/v10,1/windExp());
   return clamp(Math.round(h/5)*5,10,120);
+}
+/* direction du vent selon l altitude : le vent vire avec la hauteur (spirale d Ekman).
+   On applique au cap de surface le virement modele (10 -> 80/120 m), interpole par la hauteur. */
+function angNorm(a){a=a%360;return a<0?a+360:a;}
+function angVeer(from,to){var d=angNorm(to-from);return d>180?d-360:d;}
+function dirAtAlt(base,h){
+  if(base==null)return null;
+  if(WPROF&&WPROF.veer!=null&&WPROF.dHiH&&h>10){
+    var f=clamp(Math.log(h/10)/Math.log(WPROF.dHiH/10),0,1.5);
+    return angNorm(base+f*WPROF.veer);
+  }
+  return angNorm(base);
 }
 function distKm(la1,lo1,la2,lo2){
   var R=6371, r=Math.PI/180;
@@ -1478,22 +1491,31 @@ function renderDroneAlt(){
   if(ceil>=120)conseil="Vent faible en altitude — vol serein jusque vers 120 m (plafond légal catégorie ouverte).";
   else if(ceil<=10)conseil="Déjà trop venté au sol ("+frNum(v10,0)+" km/h) — reste très bas ou reporte le vol.";
   else conseil="Plafond conseillé ~"+ceil+" m : au-delà, le vent estimé dépasse 20 km/h et le pilotage se complique.";
+  var dsel=dirAtAlt(wdir,DALT);
+  var d0=dirAtAlt(wdir,10), d120=dirAtAlt(wdir,120);
+  var veerTot=(d0!=null&&d120!=null)?angVeer(d0,d120):null;
   var chips="";
   DALTS.forEach(function(a){
     var va=windAtAlt(v10,a);
     chips+="<button type='button' class='altchip"+(a===DALT?" on":"")+"' data-alt='"+a+"'>"
       +a+" m<b>"+frNum(va,0)+"</b><span class='un'>km/h</span></button>";
   });
+  var veerLine="";
+  if(WPROF&&WPROF.veer!=null&&veerTot!=null&&Math.abs(veerTot)>=8){
+    var sens=veerTot>0?"horaire, vers la droite":"anti-horaire, vers la gauche";
+    veerLine="<div class='altdir'>↻ Le vent vire "+compass(d0)+" → "+compass(d120)+" du sol à 120 m ("+frNum(Math.abs(veerTot),0)+"° "+sens+").</div>";
+  }
   el.style.display="block";
   el.innerHTML="<div class='altttl'>Vent estimé par altitude de vol</div>"
     +"<div class='altrow'>"+chips+"</div>"
     +"<div class='altres'>"
       +"<span class='altv "+cls+"'>"+frNum(v,0)+" km/h</span>"
-      +"<span class='altmeta'>à "+DALT+" m"+(galt!=null?" · raf. ~"+frNum(galt,0):"")+(wdir!=null?" · "+compass(wdir):"")+"</span>"
+      +"<span class='altmeta'>à "+DALT+" m"+(dsel!=null?" · "+compass(dsel):"")+(galt!=null?" · raf. ~"+frNum(galt,0):"")+"</span>"
       +"<span class='altverdict "+cls+"'>"+verdict+"</span>"
     +"</div>"
     +"<div class='altconseil "+cls+"'>"+conseil+"</div>"
-    +"<div class='altnote'>"+(WPROF?"Profil calé sur le vent modèle 10→120 m — ":"Estimation à partir du vent live 10 m — ")+"plus on monte, plus ça souffle.</div>";
+    +veerLine
+    +"<div class='altnote'>"+(WPROF?"Profil calé sur le vent modèle 10→120 m — ":"Estimation à partir du vent live 10 m — ")+"vitesse et direction évoluent avec l'altitude.</div>";
 }
 function refreshCurrent(){
   if(state.la==null)return;
@@ -1508,17 +1530,23 @@ function refreshCurrent(){
 function fetchWindProfile(){
   if(state.la==null)return;
   var la=state.la, lo=state.lo;
-  var u="https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&current=wind_speed_10m,wind_speed_80m,wind_speed_120m&timezone="+TZQ;
+  var u="https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&current=wind_speed_10m,wind_speed_80m,wind_speed_120m,wind_direction_10m,wind_direction_80m,wind_direction_120m&timezone="+TZQ;
   fetch(u).then(function(r){return r.json();}).then(function(j){
     if(state.la!==la||state.lo!==lo)return;
     var c=j&&j.current;if(!c)return;
     var v10=c.wind_speed_10m;
-    var v120=(c.wind_speed_120m!=null&&c.wind_speed_120m>0)?c.wind_speed_120m:null;
+    var has120=(c.wind_speed_120m!=null&&c.wind_speed_120m>0);
+    var v120=has120?c.wind_speed_120m:null;
     var v80=(c.wind_speed_80m!=null&&c.wind_speed_80m>0)?c.wind_speed_80m:null;
     var vhi=v120!=null?v120:v80, hhi=v120!=null?120:80;
     if(v10==null||v10<=0||vhi==null)return;
     var a=Math.log(vhi/v10)/Math.log(hhi/10);
-    WPROF={alpha:clamp(a,0.05,0.45),at:Date.now(),la:la,lo:lo};
+    var prof={alpha:clamp(a,0.05,0.45),at:Date.now(),la:la,lo:lo};
+    var d10=c.wind_direction_10m;
+    var dHi=has120?c.wind_direction_120m:c.wind_direction_80m;
+    var dHiH=has120?120:80;
+    if(d10!=null&&dHi!=null){prof.veer=angVeer(d10,dHi);prof.dHiH=dHiH;}
+    WPROF=prof;
     renderDroneAlt();
   }).catch(function(){});
 }
