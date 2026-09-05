@@ -402,6 +402,17 @@ body.sun .fcard{border-width:2px}
 .ctlink{display:inline-block; margin-top:9px; color:var(--surf); font-size:12.5px; font-weight:600; text-decoration:none}
 .ctlink:hover{text-decoration:underline}
 body.sun .fcarte{border-width:2px}
+.frow .fmaille{color:var(--sand); font-weight:700}
+.frow .fclose{color:var(--bad); font-weight:600}
+.frow .fopen{color:var(--ok); font-weight:600}
+.fmailles{margin-top:10px; background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px 12px}
+.fmailles .cth{font-weight:700; font-size:13px; color:var(--peche); margin-bottom:6px}
+.fmailles .mgh{color:var(--mist); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; margin:8px 0 3px}
+.mgrow{display:flex; justify-content:space-between; gap:10px; padding:4px 0; border-top:1px solid var(--line); font-size:12.5px}
+.mgrow .mgn{color:var(--foam)}
+.mgrow .mgm{color:var(--sand); font-family:"Spline Sans Mono",monospace; font-weight:600; text-align:right; flex:none}
+.fmailles .ctnote{margin-top:8px; color:var(--mist); font-size:11px; line-height:1.4}
+body.sun .fmailles{border-width:2px}
 .dalt .altdir{margin-top:8px; color:var(--surf); font-size:12px; line-height:1.4; font-weight:600}
 .dalt .altnote{margin-top:6px; color:var(--mist); font-size:10.5px; letter-spacing:.04em}
 body.sun .dalt{border-width:2px}
@@ -427,7 +438,7 @@ body.sun .dalt{border-width:2px}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v44</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v46</b></p>
     </div>
   </header>
 
@@ -579,7 +590,7 @@ body.sun .dalt{border-width:2px}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v44</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v46</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -1633,31 +1644,31 @@ function renderDroneAlt(){
 /* ---------- conseils peche : espece -> technique / canne / bas de ligne ---------- */
 var MOISN=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
 var SEA_ATL=[
-  {n:"Bar (loup)",tag:"Montante",maree:"montante",
+  {n:"Bar (loup)",tag:"Montante",maree:"montante",maille:"42 cm",ferm:"Nord 48°N : no-kill févr.–mars, garde avr.→janv. · Sud : toute l'année",
    techn:"Aux leurres (souple, jerkbait) ou surfcasting appâté",
    canne:"Spinning 2,40–2,70 m 10–40 g · ou surfcasting 4,00 m 100–150 g",
    bdl:"Fluorocarbone 26–30/100, hameçon 1/0–3/0 (montage coulissant en surfcasting)",
    appat:"Leurre souple shad, lançon, ver de chalut, mitraille",
    tip:"Zones agitées, courants et bordures rocheuses ; 2 h autour de la pleine mer, à l'aube ou au crépuscule."},
-  {n:"Dorade royale",mois:[4,5,6,7,8,9],tag:"Montante",maree:"montante",
+  {n:"Dorade royale",mois:[4,5,6,7,8,9],tag:"Montante",maree:"montante",maille:"23 cm",ferm:"pas de fermeture",
    techn:"Pêche du bord à soutenir / surfcasting léger",
    canne:"3,90–4,20 m, 60–120 g",
    bdl:"Fluoro 30–35/100, 1–2 hameçons forts n°1–1/0, plombée coulissante",
    appat:"Crabe vert mou, couteau, moule, ver américain",
    tip:"Estuaires, ports, plages à coquillages sur le début de montante."},
-  {n:"Sole / plie",mois:[2,3,4,8,9,10],tag:"Nuit",maree:"montante",
+  {n:"Sole / plie",mois:[2,3,4,8,9,10],tag:"Nuit",maree:"montante",maille:"sole 24 · plie 27 cm",ferm:"pas de fermeture",
    techn:"Surfcasting sur sable",
    canne:"3,90–4,20 m, 100–150 g",
    bdl:"Bas de ligne 2 empiles, hameçons fins de fer n°2–4, perle flottante",
    appat:"Ver de sable (dur), ver américain, lançon",
    tip:"Plages de sable, montante de nuit ou en fin de journée."},
-  {n:"Maquereau",mois:[4,5,6,7,8],tag:"Été",maree:"toutes",
+  {n:"Maquereau",mois:[4,5,6,7,8],tag:"Été",maree:"toutes",maille:"20 cm (30 en Mer du Nord)",ferm:"pas de fermeture",
    techn:"Aux plumes (mitraille) à la volée",
    canne:"Lancer 2,70–3,30 m, 20–60 g",
    bdl:"Train de plumes + plomb 20–40 g",
    appat:"Plumes / petits leurres brillants",
    tip:"Bancs en surface l'été, souvent le matin ; ramène par à-coups."},
-  {n:"Lieu jaune / vieille",tag:"Roche",maree:"toutes",
+  {n:"Lieu jaune / vieille",tag:"Roche",maree:"toutes",maille:"lieu jaune 30 · vieille 23 cm",ferm:"lieu jaune : Sud 48°N no-kill janv.–avril · Nord ouvert",
    techn:"Aux leurres ou palangrotte près des roches",
    canne:"Spinning 2,40–3,00 m, 15–50 g",
    bdl:"Fluoro 28–35/100, hameçon 1/0–2/0",
@@ -1665,25 +1676,25 @@ var SEA_ATL=[
    tip:"Tombants rocheux et digues ; pêche verticale possible."}
 ];
 var SEA_MED=[
-  {n:"Loup (bar)",tag:"Aube/crép.",maree:"toutes",
+  {n:"Loup (bar)",tag:"Aube/crép.",maree:"toutes",maille:"30–42 cm selon zone (parc Golfe du Lion : 42)",ferm:"pas de fermeture spécifique en Méditerranée",
    techn:"Aux leurres (surface/souple) ou pêche au poser",
    canne:"Spinning 2,40–2,70 m, 7–35 g",
    bdl:"Fluoro 22–28/100, hameçon 1/0–2/0",
    appat:"Leurre souple, sardine, ver",
    tip:"Ports, embouchures et bordures rocheuses ; surtout tôt le matin."},
-  {n:"Sar / dorade",tag:"Roche",maree:"toutes",
+  {n:"Sar / dorade",tag:"Roche",maree:"toutes",maille:"sar 25 · dorade 23 cm",ferm:"pas de fermeture",
    techn:"Pêche du bord fine (palangrotte / fireball)",
    canne:"3,50–4,50 m, action légère (20–60 g)",
    bdl:"Fluoro 18–24/100, petits hameçons forts n°4–8",
    appat:"Crabe, moule, ver de roche, pain ou pâte (sar)",
    tip:"Zones rocheuses et digues ; discrétion et fluoro fin."},
-  {n:"Oblade / saupe / mulet",tag:"Flotteur",maree:"toutes",
+  {n:"Oblade / saupe / mulet",tag:"Flotteur",maree:"toutes",maille:"mulet 30 cm · oblade/saupe non réglementées",ferm:"pas de fermeture",
    techn:"Au flotteur, esche légère",
    canne:"Bolognaise 4,00–5,00 m ou anglaise",
    bdl:"Nylon 16–20/100, hameçon n°8–12",
    appat:"Pain, ver, moule ; amorce légère",
    tip:"Surface à mi-eau le long des quais ; le mulet adore le pain."},
-  {n:"Barracuda / bonite / sévereau",mois:[5,6,7,8,9,10],tag:"Été",maree:"toutes",
+  {n:"Barracuda / bonite / sévereau",mois:[5,6,7,8,9,10],tag:"Été",maree:"toutes",maille:"pas de taille mini réglementée",ferm:"pas de fermeture",
    techn:"Aux leurres rapides (casting jig, slug)",
    canne:"Spinning 2,40–2,70 m, 15–40 g",
    bdl:"Fluoro 26–30/100 (bas de ligne dur pour le barracuda)",
@@ -1691,37 +1702,37 @@ var SEA_MED=[
    tip:"Chasses en surface l'été ; ramène vite et par saccades."}
 ];
 var FRESH=[
-  {n:"Truite",mois:[2,3,4,5,8],tag:"Rivière",
+  {n:"Truite",mois:[2,3,4,5,8],tag:"Rivière",maille:"≈ 23–30 cm (selon département)",ferm:"fermée ~21 sept. → 13 mars (rouvre 2e samedi de mars)",
    techn:"Aux leurres (cuillère, ondulante, souple) ou au toc",
    canne:"Truite 1,80–2,40 m, 3–12 g",
    bdl:"Fluoro 16–22/100, hameçon n°6–10",
    appat:"Cuillère n°1–3, teigne, ver",
    tip:"Rivières courantes, postes derrière les obstacles ; ouverture le 2e samedi de mars."},
-  {n:"Brochet",mois:[4,5,8,9,10,11],tag:"Automne",
+  {n:"Brochet",mois:[4,5,8,9,10,11],tag:"Automne",maille:"60 cm",ferm:"fermé ~26 janv. → 24 avril (rouvre dernier samedi d'avril)",
    techn:"Aux leurres (jerkbait, souple, spinnerbait) ou au vif",
    canne:"Casting/spinning 2,10–2,70 m, 15–60 g",
    bdl:"Bas de ligne acier ou fluoro 50–70/100 obligatoire (dents)",
    appat:"Gros leurres, vif (gardon)",
    tip:"Bordures, herbiers et cassures ; respecte la maille (60 cm) et la période de fermeture."},
-  {n:"Sandre",mois:[4,5,8,9,10],tag:"Crépuscule",
+  {n:"Sandre",mois:[4,5,8,9,10],tag:"Crépuscule",maille:"≈ 40–50 cm (selon département)",ferm:"fermé ~26 janv. → 24 avril (black-bass souvent prolongé, selon dépt)",
    techn:"Leurres souples en linéaire ou dandine",
    canne:"2,10–2,70 m, 7–28 g",
    bdl:"Fluoro 25–30/100, tête plombée 7–21 g",
    appat:"Shad, finesse",
    tip:"Fonds durs, fosses et ponts ; touche discrète, ferre net au crépuscule."},
-  {n:"Perche",tag:"Grégaire",
+  {n:"Perche",tag:"Grégaire",maille:"pas de taille légale",ferm:"pas de fermeture nationale (suit les carnassiers en 1re cat.)",
    techn:"Petits leurres souples, cuillères, drop-shot",
    canne:"Light 1,80–2,40 m, 3–15 g",
    bdl:"Fluoro 14–20/100, tête plombée 2–6 g",
    appat:"Petit shad, ver, drop-shot",
    tip:"Près des pontons et structures ; les perches chassent en groupe."},
-  {n:"Carpe",mois:[3,4,5,6,7,8,9,10],tag:"Nuit",
+  {n:"Carpe",mois:[3,4,5,6,7,8,9,10],tag:"Nuit",maille:"pas de taille (no-kill de nuit)",ferm:"ouverte toute l'année (pêche de nuit réglementée)",
    techn:"Pêche à la carpe (montage cheveu)",
    canne:"Carpe 3,60 m, 2,75–3,50 lb",
    bdl:"Tresse ou fluoro 25–35/100, montage cheveu, hameçon n°4–8",
    appat:"Bouillette, maïs, graines ; amorçage",
    tip:"Postes calmes et bordures encombrées ; souvent meilleure de nuit."},
-  {n:"Gardon / brème (blancs)",tag:"Au coup",
+  {n:"Gardon / brème (blancs)",tag:"Au coup",maille:"pas de taille légale",ferm:"ouverte toute l'année (2e catégorie)",
    techn:"Pêche au coup (au flotteur)",
    canne:"Coup 4,00–6,00 m ou anglaise",
    bdl:"Nylon 10–14/100, hameçon n°16–20",
@@ -1734,8 +1745,42 @@ function fishCard(sp){
   h+="<div class='frow'><span class='fk'>Canne</span><span class='fv'>"+sp.canne+"</span></div>";
   h+="<div class='frow'><span class='fk'>Bas de ligne</span><span class='fv'>"+sp.bdl+"</span></div>";
   h+="<div class='frow'><span class='fk'>Appât / leurre</span><span class='fv'>"+sp.appat+"</span></div>";
+  if(sp.maille)h+="<div class='frow'><span class='fk'>📏 Taille mini</span><span class='fv fmaille'>"+sp.maille+"</span></div>";
+  if(sp.ferm){var fcl=/no-kill|fermé|fermée/.test(sp.ferm)?"fclose":"fopen";
+    h+="<div class='frow'><span class='fk'>📅 Fermeture</span><span class='fv "+fcl+"'>"+sp.ferm+"</span></div>";}
   if(sp.tip)h+="<div class='ftip'>"+sp.tip+"</div>";
   return h+"</div>";
+}
+/* tailles minimales de capture (references nationales indicatives ; varient selon facade/departement,
+   fixees par arretes prefectoraux). Sources : prefectures / DIRM / reseau pecheapied-loisir. */
+var CRUST=[
+  {n:"Homard européen",m:"87 mm carapace (~24 cm total)"},
+  {n:"Langouste",m:"23 cm"},
+  {n:"Tourteau (dormeur)",m:"14 cm (largeur carapace)"},
+  {n:"Araignée de mer",m:"12 cm"},
+  {n:"Étrille",m:"5 cm"},
+  {n:"Crevette grise / bouquet",m:"pas de taille (bonnes pratiques)"}
+];
+var COQ=[
+  {n:"Coquille Saint-Jacques",m:"10 cm (11 en Manche est)"},
+  {n:"Ormeau",m:"9 cm"},
+  {n:"Palourde",m:"3,5 cm"},
+  {n:"Praire",m:"4 cm"},
+  {n:"Coque",m:"3 cm"},
+  {n:"Moule",m:"4 cm"},
+  {n:"Huître plate",m:"5 cm"},
+  {n:"Bulot (buccin)",m:"4,5 cm"},
+  {n:"Telline",m:"2,5 cm"}
+];
+function maillesBlock(){
+  var mk=function(title,arr){
+    var r="<div class='mgh'>"+title+"</div>";
+    arr.forEach(function(x){r+="<div class='mgrow'><span class='mgn'>"+x.n+"</span><span class='mgm'>"+x.m+"</span></div>";});
+    return r;
+  };
+  return "<div class='fmailles'><div class='cth'>📏 Tailles minimales — crustacés &amp; coquillages</div>"
+    +mk("Crustacés",CRUST)+mk("Coquillages",COQ)
+    +"<div class='ctnote'>Mesures : crustacés selon la carapace (largeur ou longueur) ; coquillages dans leur plus grande dimension. Valeurs indicatives — chaque façade/département fixe ses propres tailles par arrêté préfectoral. Vérifie l'affichage sur site et le réseau pecheapied-loisir.fr.</div></div>";
 }
 function renderFishTips(i0){
   var el=$("#fishTips");if(!el)return;
@@ -1787,7 +1832,8 @@ function carteBlock(){
   }
   return "<div class='fcarte'><div class='cth'>🎫 Carte de pêche — mer</div>"
     +"<div class='ctx2'>Pêche de loisir du bord : <b>aucune carte de pêche ni permis obligatoire</b> en France (2026). À respecter : tailles minimales de capture, marquage des captures concernées (ablation partielle de la nageoire caudale), quotas et règles spécifiques (bar, selon la zone du 48e parallèle), et pas de revente des prises.</div>"
-    +"<div class='ctnote'>Référence : réglementation des Affaires maritimes / préfecture maritime de ta façade.</div></div>";
+    +"<div class='ctnote'>Depuis le 13 février 2026 : déclaration obligatoire de certaines captures (bar, maquereau, dorade rose, lieu jaune, liche) via l'appli RecFishing sous 24 h. Référence : Affaires maritimes / préfecture maritime de ta façade.</div></div>"
+    +maillesBlock();
 }
 function refreshCurrent(){
   if(state.la==null)return;
