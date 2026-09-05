@@ -360,6 +360,8 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
 .dalt .altverdict.ok{color:var(--ok)} .dalt .altverdict.warn{color:var(--peche)} .dalt .altverdict.no{color:var(--bad)}
 .dalt .altconseil{margin-top:8px; font-size:12.5px; line-height:1.4; color:var(--foam)}
 .dalt .altconseil.warn{color:var(--peche)} .dalt .altconseil.no{color:var(--bad)}
+.warr{width:15px; height:15px; display:inline-block; vertical-align:-3px; margin-right:3px; fill:currentColor; color:var(--surf); transition:transform .35s ease}
+.warr.ok{color:var(--ok)} .warr.warn{color:var(--peche)} .warr.no{color:var(--bad)}
 .dalt .altdir{margin-top:8px; color:var(--surf); font-size:12px; line-height:1.4; font-weight:600}
 .dalt .altnote{margin-top:6px; color:var(--mist); font-size:10.5px; letter-spacing:.04em}
 body.sun .dalt{border-width:2px}
@@ -385,7 +387,7 @@ body.sun .dalt{border-width:2px}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v40</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v41</b></p>
     </div>
   </header>
 
@@ -536,7 +538,7 @@ body.sun .dalt{border-width:2px}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v40</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v41</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -705,6 +707,14 @@ function dirAtAlt(base,h){
     return angNorm(base+f*WPROF.veer);
   }
   return angNorm(base);
+}
+/* fleche visuelle : pointe dans le sens ou souffle le vent (aval = provenance + 180).
+   Le SVG dessine une fleche vers le haut (nord) ; on la tourne du cap aval. */
+function windArrow(fromDir,cls){
+  if(fromDir==null)return "";
+  var to=Math.round(angNorm(fromDir+180));
+  return "<svg class='warr "+(cls||"")+"' viewBox='0 0 24 24' style='transform:rotate("+to+"deg)' aria-hidden='true'>"
+    +"<path d='M12 2 L18.5 20 L12 15.5 L5.5 20 Z'/></svg>";
 }
 function distKm(la1,lo1,la2,lo2){
   var R=6371, r=Math.PI/180;
@@ -1471,7 +1481,7 @@ function renderDroneNow(){
   else{cls="no";verdict="Trop de vent";}
   el.style.display="flex";
   el.innerHTML="<span class='wnum "+cls+"'>"+frNum(ws,0)+" km/h</span>"
-    +"<span class='wdet'>"+(wl?wl.e+" "+wl.l+" · ":"")+(wdir!=null?compass(wdir):"")+(wg!=null?" · raf. "+frNum(wg,0)+" km/h":"")+"</span>"
+    +"<span class='wdet'>"+(wl?wl.e+" "+wl.l+" · ":"")+(wdir!=null?windArrow(wdir,cls)+compass(wdir):"")+(wg!=null?" · raf. "+frNum(wg,0)+" km/h":"")+"</span>"
     +"<span class='wverdict "+cls+"'>"+verdict+"</span>"
     +"<span class='wts'>Vent &amp; ciel en direct (AROME)"+(c.time?" · "+fmtHM(parseLocal(c.time)):"")+"</span>";
 }
@@ -1510,7 +1520,7 @@ function renderDroneAlt(){
     +"<div class='altrow'>"+chips+"</div>"
     +"<div class='altres'>"
       +"<span class='altv "+cls+"'>"+frNum(v,0)+" km/h</span>"
-      +"<span class='altmeta'>à "+DALT+" m"+(dsel!=null?" · "+compass(dsel):"")+(galt!=null?" · raf. ~"+frNum(galt,0):"")+"</span>"
+      +"<span class='altmeta'>à "+DALT+" m"+(dsel!=null?" · "+windArrow(dsel,cls)+compass(dsel):"")+(galt!=null?" · raf. ~"+frNum(galt,0):"")+"</span>"
       +"<span class='altverdict "+cls+"'>"+verdict+"</span>"
     +"</div>"
     +"<div class='altconseil "+cls+"'>"+conseil+"</div>"
