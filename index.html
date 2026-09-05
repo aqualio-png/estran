@@ -378,6 +378,19 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
 .rhd{color:var(--surf); font-size:12px; font-family:"Spline Sans Mono",monospace; min-height:14px}
 .rhint{color:var(--mist); font-size:11px; line-height:1.35}
 body.sun .rose{transition:none}
+/* conseils peche */
+.ftips{margin-top:12px; padding-top:12px; border-top:1px solid var(--line)}
+.ftips .fttl{font-size:13px; font-weight:700; color:var(--peche); margin-bottom:4px}
+.ftips .fctx{color:var(--mist); font-size:12px; line-height:1.45; margin-bottom:10px}
+.fcard{background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:8px}
+.fcard .fn{font-weight:700; font-size:14px; color:var(--foam); display:flex; align-items:center; gap:8px; margin-bottom:6px}
+.fcard .fn .ftag{font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--badgeFg); background:var(--peche); border-radius:6px; padding:2px 7px}
+.frow{display:flex; gap:8px; font-size:12.5px; line-height:1.45; margin-top:3px}
+.frow .fk{color:var(--mist); flex:none; width:92px; font-weight:600}
+.frow .fv{color:var(--foam); min-width:0}
+.ftip{margin-top:6px; font-size:12px; color:var(--mist); line-height:1.4; font-style:italic}
+.freg{margin-top:8px; color:var(--mist); font-size:11px; line-height:1.4}
+body.sun .fcard{border-width:2px}
 .dalt .altdir{margin-top:8px; color:var(--surf); font-size:12px; line-height:1.4; font-weight:600}
 .dalt .altnote{margin-top:6px; color:var(--mist); font-size:10.5px; letter-spacing:.04em}
 body.sun .dalt{border-width:2px}
@@ -403,7 +416,7 @@ body.sun .dalt{border-width:2px}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v42</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v43</b></p>
     </div>
   </header>
 
@@ -469,6 +482,7 @@ body.sun .dalt{border-width:2px}
       <div class="moonrow" id="moonRow" style="display:none"></div>
       <div class="winrow" id="winPeche"></div>
       <p class="zhint" id="pecheHint" style="display:none;margin-top:10px"></p>
+      <div class="ftips" id="fishTips" style="display:none"></div>
     </section>
 
     <section class="card">
@@ -554,7 +568,7 @@ body.sun .dalt{border-width:2px}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v42</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v43</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -1605,6 +1619,142 @@ function renderDroneAlt(){
     +"<div class='altnote'>"+(WPROF?"Profil calé sur le vent modèle 10→120 m — ":"Estimation à partir du vent live 10 m — ")+"vitesse et direction évoluent avec l'altitude.</div>";
   applyRose();
 }
+/* ---------- conseils peche : espece -> technique / canne / bas de ligne ---------- */
+var MOISN=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+var SEA_ATL=[
+  {n:"Bar (loup)",tag:"Montante",maree:"montante",
+   techn:"Aux leurres (souple, jerkbait) ou surfcasting appâté",
+   canne:"Spinning 2,40–2,70 m 10–40 g · ou surfcasting 4,00 m 100–150 g",
+   bdl:"Fluorocarbone 26–30/100, hameçon 1/0–3/0 (montage coulissant en surfcasting)",
+   appat:"Leurre souple shad, lançon, ver de chalut, mitraille",
+   tip:"Zones agitées, courants et bordures rocheuses ; 2 h autour de la pleine mer, à l'aube ou au crépuscule."},
+  {n:"Dorade royale",mois:[4,5,6,7,8,9],tag:"Montante",maree:"montante",
+   techn:"Pêche du bord à soutenir / surfcasting léger",
+   canne:"3,90–4,20 m, 60–120 g",
+   bdl:"Fluoro 30–35/100, 1–2 hameçons forts n°1–1/0, plombée coulissante",
+   appat:"Crabe vert mou, couteau, moule, ver américain",
+   tip:"Estuaires, ports, plages à coquillages sur le début de montante."},
+  {n:"Sole / plie",mois:[2,3,4,8,9,10],tag:"Nuit",maree:"montante",
+   techn:"Surfcasting sur sable",
+   canne:"3,90–4,20 m, 100–150 g",
+   bdl:"Bas de ligne 2 empiles, hameçons fins de fer n°2–4, perle flottante",
+   appat:"Ver de sable (dur), ver américain, lançon",
+   tip:"Plages de sable, montante de nuit ou en fin de journée."},
+  {n:"Maquereau",mois:[4,5,6,7,8],tag:"Été",maree:"toutes",
+   techn:"Aux plumes (mitraille) à la volée",
+   canne:"Lancer 2,70–3,30 m, 20–60 g",
+   bdl:"Train de plumes + plomb 20–40 g",
+   appat:"Plumes / petits leurres brillants",
+   tip:"Bancs en surface l'été, souvent le matin ; ramène par à-coups."},
+  {n:"Lieu jaune / vieille",tag:"Roche",maree:"toutes",
+   techn:"Aux leurres ou palangrotte près des roches",
+   canne:"Spinning 2,40–3,00 m, 15–50 g",
+   bdl:"Fluoro 28–35/100, hameçon 1/0–2/0",
+   appat:"Leurre souple, lançon, ver, morceau de sardine",
+   tip:"Tombants rocheux et digues ; pêche verticale possible."}
+];
+var SEA_MED=[
+  {n:"Loup (bar)",tag:"Aube/crép.",maree:"toutes",
+   techn:"Aux leurres (surface/souple) ou pêche au poser",
+   canne:"Spinning 2,40–2,70 m, 7–35 g",
+   bdl:"Fluoro 22–28/100, hameçon 1/0–2/0",
+   appat:"Leurre souple, sardine, ver",
+   tip:"Ports, embouchures et bordures rocheuses ; surtout tôt le matin."},
+  {n:"Sar / dorade",tag:"Roche",maree:"toutes",
+   techn:"Pêche du bord fine (palangrotte / fireball)",
+   canne:"3,50–4,50 m, action légère (20–60 g)",
+   bdl:"Fluoro 18–24/100, petits hameçons forts n°4–8",
+   appat:"Crabe, moule, ver de roche, pain ou pâte (sar)",
+   tip:"Zones rocheuses et digues ; discrétion et fluoro fin."},
+  {n:"Oblade / saupe / mulet",tag:"Flotteur",maree:"toutes",
+   techn:"Au flotteur, esche légère",
+   canne:"Bolognaise 4,00–5,00 m ou anglaise",
+   bdl:"Nylon 16–20/100, hameçon n°8–12",
+   appat:"Pain, ver, moule ; amorce légère",
+   tip:"Surface à mi-eau le long des quais ; le mulet adore le pain."},
+  {n:"Barracuda / bonite / sévereau",mois:[5,6,7,8,9,10],tag:"Été",maree:"toutes",
+   techn:"Aux leurres rapides (casting jig, slug)",
+   canne:"Spinning 2,40–2,70 m, 15–40 g",
+   bdl:"Fluoro 26–30/100 (bas de ligne dur pour le barracuda)",
+   appat:"Leurres brillants, jigs",
+   tip:"Chasses en surface l'été ; ramène vite et par saccades."}
+];
+var FRESH=[
+  {n:"Truite",mois:[2,3,4,5,8],tag:"Rivière",
+   techn:"Aux leurres (cuillère, ondulante, souple) ou au toc",
+   canne:"Truite 1,80–2,40 m, 3–12 g",
+   bdl:"Fluoro 16–22/100, hameçon n°6–10",
+   appat:"Cuillère n°1–3, teigne, ver",
+   tip:"Rivières courantes, postes derrière les obstacles ; ouverture le 2e samedi de mars."},
+  {n:"Brochet",mois:[4,5,8,9,10,11],tag:"Automne",
+   techn:"Aux leurres (jerkbait, souple, spinnerbait) ou au vif",
+   canne:"Casting/spinning 2,10–2,70 m, 15–60 g",
+   bdl:"Bas de ligne acier ou fluoro 50–70/100 obligatoire (dents)",
+   appat:"Gros leurres, vif (gardon)",
+   tip:"Bordures, herbiers et cassures ; respecte la maille (60 cm) et la période de fermeture."},
+  {n:"Sandre",mois:[4,5,8,9,10],tag:"Crépuscule",
+   techn:"Leurres souples en linéaire ou dandine",
+   canne:"2,10–2,70 m, 7–28 g",
+   bdl:"Fluoro 25–30/100, tête plombée 7–21 g",
+   appat:"Shad, finesse",
+   tip:"Fonds durs, fosses et ponts ; touche discrète, ferre net au crépuscule."},
+  {n:"Perche",tag:"Grégaire",
+   techn:"Petits leurres souples, cuillères, drop-shot",
+   canne:"Light 1,80–2,40 m, 3–15 g",
+   bdl:"Fluoro 14–20/100, tête plombée 2–6 g",
+   appat:"Petit shad, ver, drop-shot",
+   tip:"Près des pontons et structures ; les perches chassent en groupe."},
+  {n:"Carpe",mois:[3,4,5,6,7,8,9,10],tag:"Nuit",
+   techn:"Pêche à la carpe (montage cheveu)",
+   canne:"Carpe 3,60 m, 2,75–3,50 lb",
+   bdl:"Tresse ou fluoro 25–35/100, montage cheveu, hameçon n°4–8",
+   appat:"Bouillette, maïs, graines ; amorçage",
+   tip:"Postes calmes et bordures encombrées ; souvent meilleure de nuit."},
+  {n:"Gardon / brème (blancs)",tag:"Au coup",
+   techn:"Pêche au coup (au flotteur)",
+   canne:"Coup 4,00–6,00 m ou anglaise",
+   bdl:"Nylon 10–14/100, hameçon n°16–20",
+   appat:"Asticot, ver de vase, pinkies ; amorce fine",
+   tip:"Amorçage régulier et léger ; idéal pour débuter ou faire pêcher les enfants."}
+];
+function fishCard(sp){
+  var h="<div class='fcard'><div class='fn'>"+sp.n+(sp.tag?"<span class='ftag'>"+sp.tag+"</span>":"")+"</div>";
+  h+="<div class='frow'><span class='fk'>Technique</span><span class='fv'>"+sp.techn+"</span></div>";
+  h+="<div class='frow'><span class='fk'>Canne</span><span class='fv'>"+sp.canne+"</span></div>";
+  h+="<div class='frow'><span class='fk'>Bas de ligne</span><span class='fv'>"+sp.bdl+"</span></div>";
+  h+="<div class='frow'><span class='fk'>Appât / leurre</span><span class='fv'>"+sp.appat+"</span></div>";
+  if(sp.tip)h+="<div class='ftip'>"+sp.tip+"</div>";
+  return h+"</div>";
+}
+function renderFishTips(i0){
+  var el=$("#fishTips");if(!el)return;
+  if(M==null||state.la==null){el.style.display="none";return;}
+  var dref=(typeof i0==="number"&&M.hourly&&M.hourly.time[i0])?parseLocal(M.hourly.time[i0]):new Date();
+  if(!dref||isNaN(dref.getTime()))dref=new Date();
+  var m=dref.getMonth();
+  var med=(!LAND)&&(state.lo>3.2&&state.la<44.0);
+  var list=LAND?FRESH:(med?SEA_MED:SEA_ATL);
+  var inseason=list.filter(function(sp){return !sp.mois||sp.mois.indexOf(m)>=0;});
+  if(inseason.length<2)inseason=list.slice();
+  var rising=null, coef=null;
+  if(!LAND&&!med){
+    var rt=(DAY===0)?new Date():new Date(dref.getFullYear(),dref.getMonth(),dref.getDate(),13,0);
+    var ph=phaseAt(rt); if(ph)rising=ph.rising; coef=Math.round(coefAt(rt));
+    if(rising===true)inseason.sort(function(a,b){return (b.maree==="montante"?1:0)-(a.maree==="montante"?1:0);});
+  }
+  var pick=inseason.slice(0,3);
+  var ctx;
+  if(LAND)ctx="Eau douce · "+MOISN[m]+". Carte de pêche (AAPPMA) obligatoire et périodes d'ouverture variables selon l'espèce.";
+  else if(med)ctx="Méditerranée · marée faible (~20–40 cm) : mise sur l'aube, le crépuscule et une mer peu agitée plutôt que sur le coefficient.";
+  else ctx="Atlantique / Manche · "+(rising?"marée montante":"marée descendante")+(coef?" (coef ~"+coef+")":"")+" — la montante et les 2 h autour de la pleine mer sont les meilleurs moments du bord.";
+  var reg=LAND
+    ?"Rappel : carte de pêche obligatoire, respect des tailles/mailles, quotas et fermetures (brochet, truite, sandre)."
+    :"Rappel : tailles minimales de capture et pêche de loisir uniquement (pas de revente).";
+  var html="<div class='fttl'>💡 Quoi pêcher &amp; comment</div><div class='fctx'>"+ctx+"</div>";
+  pick.forEach(function(sp){html+=fishCard(sp);});
+  html+="<div class='freg'>"+reg+" Suggestions indicatives selon le lieu et la saison — la présence réelle des poissons varie.</div>";
+  el.style.display="block"; el.innerHTML=html;
+}
 function refreshCurrent(){
   if(state.la==null)return;
   fetchWindProfile();
@@ -2233,6 +2383,7 @@ function renderDay(){
   renderCalStatus();
   renderAge();
   renderMoon(i0);
+  renderFishTips(i0);
   renderEclipses();
   if(MINI)renderMini();
 }
