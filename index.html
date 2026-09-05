@@ -108,6 +108,10 @@ body.mini{padding:0}
 .mcell.on{border-color:currentColor}
 .mcell.surf.on{color:var(--surf)} .mcell.peche.on{color:var(--peche)} .mcell.drone.on{color:#A78BFA}
 .mcell.off .v{color:var(--mist)}
+.mcell{cursor:pointer}
+.mcell.msoff{opacity:.38}
+.mcell.msoff .v{color:var(--mist); font-size:11px}
+.mselhint{color:var(--mist); font-size:10.5px; text-align:center; margin-top:8px; letter-spacing:.03em}
 .mmeteo{
   display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; color:var(--mist);
   font-family:"Spline Sans Mono",monospace; font-size:13px;
@@ -391,6 +395,16 @@ body.sun .rose{transition:none}
 .ftip{margin-top:6px; font-size:12px; color:var(--mist); line-height:1.4; font-style:italic}
 .freglink{display:inline-block; margin-top:8px; color:var(--surf); font-size:12px; font-weight:600; text-decoration:none}
 .freglink:hover{text-decoration:underline}
+.idbtn{display:inline-block; background:var(--badgeBg); color:var(--badgeFg); border-radius:12px; padding:11px 16px; font-weight:700; font-size:14px; cursor:pointer}
+#idImg{display:block; width:100%; max-height:280px; object-fit:contain; border:1px solid var(--line); border-radius:12px; margin-top:12px; background:var(--panel2)}
+.idfilter{width:100%; background:var(--deep); border:1px solid var(--line); border-radius:10px; padding:10px 12px; color:var(--foam); font-size:14px; font-family:inherit; outline:none; margin-top:12px}
+.idfilter:focus{border-color:var(--surf)}
+.idghint{color:var(--mist); font-size:11.5px; margin:12px 0 6px; letter-spacing:.02em}
+.idrow{background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:9px 12px; margin-bottom:6px; cursor:pointer}
+.idrow .idn{font-weight:700; font-size:13.5px; color:var(--foam)}
+.idrow .idcue{color:var(--mist); font-size:12px; line-height:1.4; margin-top:2px}
+.iddet{margin:-2px 0 8px}
+body.sun .idrow, body.sun #idImg{border-width:2px}
 .freg{margin-top:8px; color:var(--mist); font-size:11px; line-height:1.4}
 body.sun .fcard{border-width:2px}
 .fcarte{margin-top:10px; background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px 12px}
@@ -442,7 +456,7 @@ body.sun .dalt{border-width:2px}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v49</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v50</b></p>
     </div>
   </header>
 
@@ -509,6 +523,16 @@ body.sun .dalt{border-width:2px}
       <div class="winrow" id="winPeche"></div>
       <p class="zhint" id="pecheHint" style="display:none;margin-top:10px"></p>
       <div class="ftips" id="fishTips" style="display:none"></div>
+    </section>
+
+    <section class="card" id="identSection">
+      <h2><span class="sw" style="background:var(--peche)"></span>📸 Identifier une espèce</h2>
+      <p class="zhint" style="margin:2px 0 10px">Prends ta prise en photo, puis compare-la au guide des espèces de ton spot et touche la bonne pour voir sa réglementation. Identification assistée — la photo reste sur ton téléphone, rien n'est envoyé.</p>
+      <label class="idbtn" for="idPhoto">📷 Prendre / choisir une photo</label>
+      <input type="file" accept="image/*" capture="environment" id="idPhoto" hidden>
+      <img id="idImg" alt="Photo de la prise" style="display:none">
+      <input type="text" id="idFilter" class="idfilter" placeholder="Filtrer par nom (bar, palourde, sar…)">
+      <div id="idGuide"></div>
     </section>
 
     <section class="card">
@@ -594,7 +618,7 @@ body.sun .dalt{border-width:2px}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v49</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v50</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -623,6 +647,7 @@ var DALTS=[30,60,90,120];
 var WPROF=null;
 var CMP={on:false, heading:0, ok:false};
 var FMED=false;
+var MSEL={surf:true, peche:true, drone:true};
 var state={la:null, lo:null, label:""};
 
 /* ==================== PURE ==================== */
@@ -1854,6 +1879,79 @@ function carteBlock(){
     +"<div class='ctnote'>Depuis le 13 février 2026 : déclaration obligatoire de certaines captures (bar, maquereau, dorade rose, lieu jaune, liche) via l'appli RecFishing sous 24 h. Référence : Affaires maritimes / préfecture maritime de ta façade.</div></div>"
     +maillesBlock();
 }
+/* ---------- identification assistee (photo -> guide visuel des especes du spot) ---------- */
+var IDVIS={
+  "Bar (loup)":"Corps argenté allongé, dos gris-bleu, bord de l'opercule noir.",
+  "Dorade royale":"Tache dorée entre les yeux, corps ovale argenté, reflets.",
+  "Sole / plie":"Poisson plat : sole ovale brun-sable ; plie ronde à points orange.",
+  "Maquereau":"Dos bleu-vert zébré de noir, ventre argenté, corps fuselé.",
+  "Lieu jaune / vieille":"Lieu jaune allongé, ligne latérale claire ; vieille trapue et colorée (roche).",
+  "Loup (bar)":"Corps argenté fuselé, dos gris-bleu, bord d'opercule noir.",
+  "Sar / dorade":"Sar gris à bandes verticales sombres + tache noire au pédoncule.",
+  "Oblade / saupe / mulet":"Oblade : grosse tache noire cerclée près de la queue ; saupe : lignes dorées.",
+  "Barracuda / bonite / sévereau":"Barracuda long à mâchoire saillante ; bonite fuselée au dos rayé.",
+  "Truite":"Flancs tachetés (points noirs/rouges), corps fuselé, nageoire adipeuse.",
+  "Brochet":"Long museau en bec de canard, corps allongé tacheté.",
+  "Sandre":"Dos rayé, première dorsale épineuse, yeux vitreux.",
+  "Perche":"Flancs verts à bandes verticales sombres, nageoires rougeâtres.",
+  "Carpe":"Corps trapu, 2 barbillons de chaque côté de la bouche, grandes écailles.",
+  "Gardon / brème (blancs)":"Gardon argenté à œil rouge ; brème haute, plate et grise.",
+  "Homard européen":"Bleu sombre, deux grosses pinces inégales.",
+  "Langouste":"Sans grosses pinces, longues antennes épineuses, carapace épineuse.",
+  "Tourteau (dormeur)":"Carapace ovale brun-rouge « pied de biche », pinces à bout noir.",
+  "Araignée de mer":"Carapace ronde épineuse, longues pattes fines.",
+  "Étrille":"Petit crabe nageur, yeux rouges, dernière paire de pattes en palette.",
+  "Crevette grise / bouquet":"Petite, translucide à grisâtre.",
+  "Coquille Saint-Jacques":"Deux valves bombées côtelées en éventail.",
+  "Ormeau":"Coquille en oreille nacrée, rangée de trous sur le bord.",
+  "Palourde":"Coquille striée quadrillée (sillons croisés).",
+  "Praire":"Coquille épaisse à fortes côtes rayonnantes.",
+  "Coque":"Petite coquille bombée côtelée, en forme de cœur.",
+  "Moule":"Coquille noire allongée en goutte.",
+  "Couteau":"Coquille longue et étroite (manche de couteau).",
+  "Huître plate":"Ronde, plate et rugueuse.",
+  "Bulot (buccin)":"Coquille spiralée en pointe (escargot de mer).",
+  "Telline":"Petite coquille triangulaire lisse, souvent colorée."
+};
+function findFish(name){
+  var all=SEA_ATL.concat(SEA_MED).concat(FRESH);
+  for(var i=0;i<all.length;i++)if(all[i].n===name)return all[i];
+  return null;
+}
+function findCC(name){
+  var all=CRUST.concat(COQ);
+  for(var i=0;i<all.length;i++)if(all[i].n===name)return all[i];
+  return null;
+}
+function identDetail(name){
+  var sp=findFish(name);
+  if(sp)return fishCard(sp);
+  var x=findCC(name);
+  if(x)return "<div class='fcard'><div class='fn'>"+x.n+"</div>"
+    +"<div class='frow'><span class='fk'>📏 Taille mini</span><span class='fv fmaille'>"+x.m+"</span></div>"
+    +(x.r?"<div class='frow'><span class='fk'>⚖️ Règle</span><span class='fv'>"+x.r+"</span></div>":"")
+    +(IDVIS[x.n]?"<div class='ftip'>"+IDVIS[x.n]+"</div>":"")
+    +"</div>";
+  return "";
+}
+function renderIdent(filter){
+  var el=$("#idGuide");if(!el)return;
+  if(state.la==null){el.innerHTML="<div class='idghint'>Choisis d'abord un spot pour charger les espèces locales.</div>";return;}
+  var list=(LAND?FRESH:(FMED?SEA_MED:SEA_ATL)).slice();
+  var extra=LAND?[]:CRUST.concat(COQ);
+  var f=(filter||"").toLowerCase().trim();
+  var rows="";
+  var addRow=function(name){
+    var cue=IDVIS[name]||"";
+    if(f&&name.toLowerCase().indexOf(f)<0&&cue.toLowerCase().indexOf(f)<0)return;
+    rows+="<div class='idrow' data-idn='"+encodeURIComponent(name)+"'><div class='idn'>"+name+"</div>"
+      +"<div class='idcue'>"+cue+"</div></div><div class='iddet' style='display:none'></div>";
+  };
+  list.forEach(function(sp){addRow(sp.n);});
+  extra.forEach(function(x){addRow(x.n);});
+  el.innerHTML="<div class='idghint'>"+(LAND?"Espèces d'eau douce courantes — touche la tienne :":"Espèces du bord (poissons, crustacés, coquillages) — touche la tienne :")+"</div>"
+    +(rows||"<div class='idghint'>Aucune espèce ne correspond à « "+f+" ».</div>");
+}
 function refreshCurrent(){
   if(state.la==null)return;
   fetchWindProfile();
@@ -2417,11 +2515,13 @@ function renderMini(){
   h+="<div class='mtide'><div><div class='big'>"+(nx?(nx.type==="PM"?"Pleine mer ":"Basse mer ")+fmtHM(nx.t):"—")+"</div>"
     +"<div class='sub'>"+(nx?"dans "+fmtDur(nx.t-now):"")+"</div></div>"
     +"<div><div class='coeflbl'>coef</div><div class='coef'>"+(coef!=null?coef:"—")+"</div></div></div>";
-  h+="<div class='mrow'>"
-    +"<div class='mcell surf "+(s.on?"on":"off")+"'><div class='t'>Surf</div><div class='v'>"+s.t+"</div></div>"
-    +"<div class='mcell peche "+(p.on?"on":"off")+"'><div class='t'>Pêche</div><div class='v'>"+p.t+"</div></div>"
-    +"<div class='mcell drone "+(d.on?"on":"off")+"'><div class='t'>Drone</div><div class='v'>"+d.t+"</div></div>"
-    +"</div>";
+  h+="<div class='mrow'>";
+  [["surf","Surf",s],["peche","Pêche",p],["drone","Drone",d]].forEach(function(a){
+    var cat=a[0],st=a[2],seld=MSEL[cat]!==false;
+    h+="<div class='mcell "+cat+" "+(seld?(st.on?"on":"off"):"msoff")+"' data-msel='"+cat+"'>"
+      +"<div class='t'>"+a[1]+"</div><div class='v'>"+(seld?st.t:"masqué")+"</div></div>";
+  });
+  h+="</div><div class='mselhint'>Touche une tuile pour l'afficher ou la masquer</div>";
   h+="<div class='mmeteo'>";
   if(wl)h+="<span>"+wl.e+" "+wl.l+"</span>";
   if(c&&c.wind_speed_10m!=null)h+="<span>💨 "+frNum(c.wind_speed_10m,0)+" km/h"+(c.wind_direction_10m!=null?" "+compass(c.wind_direction_10m):"")+"</span>";
@@ -2483,6 +2583,7 @@ function renderDay(){
   renderAge();
   renderMoon(i0);
   renderFishTips(i0);
+  renderIdent($("#idFilter")&&$("#idFilter").value?$("#idFilter").value:"");
   renderEclipses();
   if(MINI)renderMini();
 }
@@ -2808,6 +2909,33 @@ function init(){
   try{th=localStorage.getItem("estran_theme")||"night";}catch(e){}
   applyTheme(th,true);
   try{var _da=parseInt(localStorage.getItem("estran_dalt"),10);if(DALTS.indexOf(_da)>=0)DALT=_da;}catch(e){}
+  try{var _ms=JSON.parse(localStorage.getItem("estran_msel")||"null");if(_ms&&typeof _ms==="object")MSEL={surf:_ms.surf!==false,peche:_ms.peche!==false,drone:_ms.drone!==false};}catch(e){}
+  var _mv=$("#miniView");
+  if(_mv)_mv.addEventListener("click",function(e){
+    var t=e.target;
+    while(t&&t!==_mv){
+      var cat=t.getAttribute?t.getAttribute("data-msel"):null;
+      if(cat){MSEL[cat]=(MSEL[cat]===false);try{localStorage.setItem("estran_msel",JSON.stringify(MSEL));}catch(err){}renderMini();return;}
+      t=t.parentNode;
+    }
+  });
+  if($("#idPhoto"))$("#idPhoto").addEventListener("change",function(){
+    var fl=this.files&&this.files[0];if(!fl)return;
+    var img=$("#idImg");try{img.src=URL.createObjectURL(fl);}catch(e){}img.style.display="block";
+    renderIdent($("#idFilter")?$("#idFilter").value:"");
+    toast("Compare ta photo au guide ci-dessous et touche l'espèce");
+  });
+  if($("#idFilter"))$("#idFilter").addEventListener("input",function(){renderIdent(this.value);});
+  if($("#idGuide"))$("#idGuide").addEventListener("click",function(e){
+    var t=e.target;while(t&&t!==this&&!(t.getAttribute&&t.getAttribute("data-idn")))t=t.parentNode;
+    if(!t||t===this)return;
+    var name=decodeURIComponent(t.getAttribute("data-idn"));
+    var det=t.nextElementSibling;
+    if(det&&(""+det.className).indexOf("iddet")>=0){
+      if(det.style.display==="none"){det.innerHTML=identDetail(name);det.style.display="block";}
+      else det.style.display="none";
+    }
+  });
   var _dalt=$("#droneAlt");
   if(_dalt)_dalt.addEventListener("click",function(e){
     var t=e.target;
