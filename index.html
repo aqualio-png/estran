@@ -391,6 +391,17 @@ body.sun .rose{transition:none}
 .ftip{margin-top:6px; font-size:12px; color:var(--mist); line-height:1.4; font-style:italic}
 .freg{margin-top:8px; color:var(--mist); font-size:11px; line-height:1.4}
 body.sun .fcard{border-width:2px}
+.fcarte{margin-top:10px; background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px 12px}
+.fcarte .cth{font-weight:700; font-size:13px; color:var(--peche); margin-bottom:5px}
+.fcarte .ctx2{color:var(--foam); font-size:12.5px; line-height:1.45; margin-bottom:6px}
+.ctrow{display:flex; flex-wrap:wrap; align-items:baseline; gap:3px 8px; padding:6px 0; border-top:1px solid var(--line); font-size:12.5px}
+.ctrow .ctt{font-weight:600; color:var(--foam)}
+.ctrow .ctp{color:var(--sand); font-family:"Spline Sans Mono",monospace; font-weight:600}
+.ctrow .ctd{color:var(--mist); flex-basis:100%; font-size:11.5px; line-height:1.35}
+.fcarte .ctnote{margin-top:8px; color:var(--mist); font-size:11px; line-height:1.4}
+.ctlink{display:inline-block; margin-top:9px; color:var(--surf); font-size:12.5px; font-weight:600; text-decoration:none}
+.ctlink:hover{text-decoration:underline}
+body.sun .fcarte{border-width:2px}
 .dalt .altdir{margin-top:8px; color:var(--surf); font-size:12px; line-height:1.4; font-weight:600}
 .dalt .altnote{margin-top:6px; color:var(--mist); font-size:10.5px; letter-spacing:.04em}
 body.sun .dalt{border-width:2px}
@@ -416,7 +427,7 @@ body.sun .dalt{border-width:2px}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v43</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v44</b></p>
     </div>
   </header>
 
@@ -568,7 +579,7 @@ body.sun .dalt{border-width:2px}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v43</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v44</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -1747,13 +1758,36 @@ function renderFishTips(i0){
   if(LAND)ctx="Eau douce · "+MOISN[m]+". Carte de pêche (AAPPMA) obligatoire et périodes d'ouverture variables selon l'espèce.";
   else if(med)ctx="Méditerranée · marée faible (~20–40 cm) : mise sur l'aube, le crépuscule et une mer peu agitée plutôt que sur le coefficient.";
   else ctx="Atlantique / Manche · "+(rising?"marée montante":"marée descendante")+(coef?" (coef ~"+coef+")":"")+" — la montante et les 2 h autour de la pleine mer sont les meilleurs moments du bord.";
-  var reg=LAND
-    ?"Rappel : carte de pêche obligatoire, respect des tailles/mailles, quotas et fermetures (brochet, truite, sandre)."
-    :"Rappel : tailles minimales de capture et pêche de loisir uniquement (pas de revente).";
   var html="<div class='fttl'>💡 Quoi pêcher &amp; comment</div><div class='fctx'>"+ctx+"</div>";
   pick.forEach(function(sp){html+=fishCard(sp);});
-  html+="<div class='freg'>"+reg+" Suggestions indicatives selon le lieu et la saison — la présence réelle des poissons varie.</div>";
+  html+=carteBlock();
+  html+="<div class='freg'>Suggestions indicatives selon le lieu et la saison — la présence réelle des poissons varie.</div>";
   el.style.display="block"; el.innerHTML=html;
+}
+/* carte de peche selon le point GPS : eau douce (AAPPMA, carte obligatoire) vs mer (loisir, pas de carte).
+   Types et tarifs 2026 indicatifs (varient selon le departement) ; source officielle : cartedepeche.fr / FNPF. */
+var CARTES=[
+  {t:"Interfédérale (majeur)",p:"~100 €",d:"adulte · réciprocité ~91 départements (EHGO/URNE/CHI)"},
+  {t:"Personne majeure",p:"~75–80 €",d:"adulte · départementale (option réciprocité possible)"},
+  {t:"Personne mineure (12–17 ans)",p:"~20–25 €",d:"jeunes de 12 à 17 ans"},
+  {t:"Découverte −12 ans",p:"~6 €",d:"enfants de moins de 12 ans"},
+  {t:"Découverte femme",p:"~35 €",d:"femmes (souvent −50 %), 1 ligne"},
+  {t:"Hebdomadaire / vacances",p:"~30–35 €",d:"7 jours consécutifs"},
+  {t:"Journalière",p:"~14–16 €",d:"1 journée"}
+];
+function carteBlock(){
+  if(LAND){
+    var rows="";
+    CARTES.forEach(function(c){rows+="<div class='ctrow'><span class='ctt'>"+c.t+"</span><span class='ctp'>"+c.p+"</span><span class='ctd'>"+c.d+"</span></div>";});
+    return "<div class='fcarte'><div class='cth'>🎫 Carte de pêche — eau douce</div>"
+      +"<div class='ctx2'>Obligatoire, délivrée par l'AAPPMA locale (via ta fédération départementale). À choisir selon le profil et la durée :</div>"
+      +rows
+      +"<div class='ctnote'>Eaux de 1re catégorie (truite/salmonidés) ou 2e catégorie (carnassiers/poissons blancs) : périodes d'ouverture différentes. La CPMA (redevance milieux aquatiques) est incluse. Tarifs indicatifs 2026, variables selon le département.</div>"
+      +"<a class='ctlink' href='https://www.cartedepeche.fr' target='_blank' rel='noopener'>Acheter en ligne / carte interactive → cartedepeche.fr</a></div>";
+  }
+  return "<div class='fcarte'><div class='cth'>🎫 Carte de pêche — mer</div>"
+    +"<div class='ctx2'>Pêche de loisir du bord : <b>aucune carte de pêche ni permis obligatoire</b> en France (2026). À respecter : tailles minimales de capture, marquage des captures concernées (ablation partielle de la nageoire caudale), quotas et règles spécifiques (bar, selon la zone du 48e parallèle), et pas de revente des prises.</div>"
+    +"<div class='ctnote'>Référence : réglementation des Affaires maritimes / préfecture maritime de ta façade.</div></div>";
 }
 function refreshCurrent(){
   if(state.la==null)return;
