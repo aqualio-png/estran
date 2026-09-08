@@ -456,7 +456,7 @@ body.sun .dalt{border-width:2px}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v50</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v51</b></p>
     </div>
   </header>
 
@@ -588,7 +588,7 @@ body.sun .dalt{border-width:2px}
         <span class="radtime" id="radTime"></span>
       </div>
       <div id="rainNext"></div>
-      <p class="zhint">Observation radar réelle (RainViewer, image toutes les 10 min), actualisée toutes les 5 minutes et à chaque retour dans Estran : ce que les modèles ratent, le radar le montre. Zoome pour le détail local. Les dernières images marquées «&nbsp;prévision&nbsp;» sont une extrapolation courte.</p>
+      <p class="zhint">Observation radar réelle (RainViewer, image toutes les 10 min), actualisée toutes les 5 minutes et à chaque retour dans Estran : ce que les modèles ratent, le radar le montre. Zoome pour le détail local. La frise ci-dessous distingue la pluie sur ton point (barre franche) et le risque d averse dans un rayon de ~15 km (barre pâle). Les dernières images marquées «&nbsp;prévision&nbsp;» sont une extrapolation courte.</p>
     </section>
 
     <section class="card">
@@ -618,7 +618,7 @@ body.sun .dalt{border-width:2px}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v50</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v51</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -947,6 +947,19 @@ function calDelta(pmMs,offMs){
     if(best==null||Math.abs(diff)<Math.abs(best))best=diff;
   }
   return best;
+}
+function rainRisk(pointMm,sectorMm,prob){
+  var p=(pointMm==null)?0:pointMm;
+  var sm=(sectorMm==null)?0:sectorMm;
+  var pr=(prob==null)?0:prob;
+  if(p>=2)return 3;
+  if(p>=0.3)return 2;
+  if(sm>=2||(sm>=0.3&&pr>=50))return 2;
+  if(sm>=0.3||pr>=45)return 1;
+  return 0;
+}
+function riskLabel(lv){
+  return ["","des averses circulent dans le secteur","de la pluie est probable dans le secteur","de la pluie soutenue traverse le secteur"][lv]||"";
 }
 function fitHeights(hPmMod,hBmMod,HPmOff,HBmOff){
   if(hPmMod==null||hBmMod==null||HPmOff==null||HBmOff==null)return null;
@@ -2173,17 +2186,44 @@ function renderRainNext(){
     hrs.push(fmtHM(parseLocal(M.hourly.time[idx])).slice(0,3));
   }
   var maj=state.at?(" · calcul de "+fmtHM(new Date(state.at))):"";
-  var head="<div class='rnt'>Ensuite — pluie prévue sur 12 h au point GPS (AROME"+maj+")</div>";
+  var head="<div class='rnt'>Ensuite — pluie sur 12 h : point GPS et secteur ~15 km (AROME"+maj+")</div>";
+  var sec=(W&&W.sector)?W.sector:null;
+  var secAt=function(idx){
+    if(!sec||idx>=M.hourly.time.length)return {pr:null,prob:null};
+    var j=sec.time.indexOf(M.hourly.time[idx]);
+    if(j<0)return {pr:null,prob:null};
+    return {pr:sec.pr[j],prob:sec.prob[j]};
+  };
+  var riskMax=0, riskFirst=null, secMax=0;
   var bars="", labels="";
+  var RC=themeCols(THEME);
   for(var q2=0;q2<vals.length;q2++){
     var v2=vals[q2];
-    var h=Math.max(4,Math.round(v2/maxmm*100));
-    var RC=themeCols(THEME);
-    var col=v2<=0.05?RC.r0:v2<0.5?RC.r1:v2<2?RC.r2:RC.r3;
-    bars+="<div class='b' style='height:"+h+"%;background:"+col+"' title='"+hrs[q2]+" : "+frNum(v2,1)+" mm'></div>";
+    var sc=secAt(k+q2);
+    if(sc.pr!=null&&sc.pr>secMax)secMax=sc.pr;
+    var lv=rainRisk(v2,sc.pr,sc.prob);
+    if(lv>0&&riskFirst==null)riskFirst=hrs[q2];
+    if(lv>riskMax)riskMax=lv;
+    var ref=Math.max(maxmm,sc.pr||0);
+    var hv=Math.max(v2,(sc.pr||0)*0.55);
+    var h=Math.max(4,Math.round(hv/ref*100));
+    var col;
+    if(v2>0.05)col=(v2<0.5?RC.r1:v2<2?RC.r2:RC.r3);
+    else if(lv>=2)col=RC.r1;
+    else col=RC.r0;
+    var tip=hrs[q2]+" : "+frNum(v2,1)+" mm au point"
+      +(sc.pr!=null?" · secteur "+frNum(sc.pr,1)+" mm"+(sc.prob!=null?" ("+frNum(sc.prob,0)+" %)":""):"");
+    bars+="<div class='b' style='height:"+h+"%;background:"+col+(lv>0&&v2<=0.05?";opacity:.6":"")+"' title='"+tip+"'></div>";
     labels+="<span>"+(q2%3===0?hrs[q2]:"")+"</span>";
   }
-  var dry=any?"":"<p class='zhint' style='margin:6px 0 0'>Pas de pluie prévue dans les 12 prochaines heures.</p>";
+  var dry;
+  if(any)dry="";
+  else if(riskMax>0){
+    dry="<p class='zhint' style='margin:6px 0 0;color:var(--peche)'>Rien de prévu exactement sur toi, mais "
+      +riskLabel(riskMax)+(riskFirst?" vers "+riskFirst:"")
+      +(secMax>0?" (jusqu à "+frNum(secMax,1)+" mm à ~15 km)":"")
+      +". Les averses se déplacent : garde un œil sur le radar.</p>";
+  }else dry="<p class='zhint' style='margin:6px 0 0'>Pas de pluie prévue dans les 12 prochaines heures, ni sur toi ni dans le secteur.</p>";
   el.innerHTML=head+"<div class='rn'>"+bars+"</div><div class='rnl'>"+labels+"</div>"+dry;
 }
 
@@ -2712,15 +2752,41 @@ function probeMarine(la,lo){
 function fetchAll(la,lo,label,silent){
   if(!silent)show("#loading");
   var wu="https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,temperature_2m,weather_code&minutely_15=precipitation,weather_code&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m,weather_code&timezone="+TZQ+"&forecast_days=8&models=meteofrance_seamless";
+  var d15=0.14;
+  var nla=[(la-d15).toFixed(3),(la+d15).toFixed(3),la.toFixed(3),la.toFixed(3)].join(",");
+  var nlo=[lo.toFixed(3),lo.toFixed(3),(lo-d15).toFixed(3),(lo+d15).toFixed(3)].join(",");
+  var nu="https://api.open-meteo.com/v1/forecast?latitude="+nla+"&longitude="+nlo+
+    "&hourly=precipitation,precipitation_probability&timezone="+TZQ+"&forecast_days=2&models=meteofrance_seamless";
   var uu="https://air-quality-api.open-meteo.com/v1/air-quality?latitude="+la+"&longitude="+lo+"&hourly=uv_index&timezone="+TZQ+"&forecast_days=7";
   var getW=function(){
     return Promise.all([
       fetch(wu).then(function(r){return r.json();}),
-      fetch(uu).then(function(r){return r.json();}).catch(function(){return null;})
+      fetch(uu).then(function(r){return r.json();}).catch(function(){return null;}),
+      fetch(nu).then(function(r){return r.json();}).catch(function(){return null;})
     ]).then(function(res){
       var w=res[0];
       if(!w||!w.hourly||!w.hourly.time)throw new Error("no-weather");
       if(res[1]&&res[1].hourly&&res[1].hourly.uv_index)w.hourly.uv_index=res[1].hourly.uv_index;
+      var arr=res[2];
+      if(Array.isArray(arr)&&arr.length){
+        var t0=arr[0].hourly&&arr[0].hourly.time;
+        if(t0){
+          var mx=[],mp=[];
+          for(var qs=0;qs<t0.length;qs++){
+            var bp=0,bq=0;
+            for(var zs=0;zs<arr.length;zs++){
+              var hh=arr[zs].hourly;
+              if(!hh)continue;
+              var vv=hh.precipitation?hh.precipitation[qs]:null;
+              var pp=hh.precipitation_probability?hh.precipitation_probability[qs]:null;
+              if(vv!=null&&vv>bp)bp=vv;
+              if(pp!=null&&pp>bq)bq=pp;
+            }
+            mx.push(bp);mp.push(bq);
+          }
+          w.sector={time:t0,pr:mx,prob:mp};
+        }
+      }
       return w;
     });
   };
