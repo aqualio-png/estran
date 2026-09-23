@@ -502,7 +502,9 @@ html.car .idrow .idn{font-size:17px}
 html.car .fcard .fn{font-size:17px}
 html.car .frow{font-size:15px}
 html.car .frow .fk{width:120px}
-html.car .qrbox{width:220px}
+html.car .qrbox{width:220px; align-self:center}
+html.car .sharewrap{flex-direction:column; align-items:stretch}
+html.car .shareurl{text-align:center}
 html.car .toast{font-size:17px; padding:16px 22px; bottom:40px}
 html.car #radarMap{height:420px}
 html.car .gmap,html.car #gpMap{height:440px}
@@ -524,6 +526,12 @@ html.car .carrow button{min-height:60px; font-size:17px; padding:10px 20px}
 .insthelp .ihdl{display:inline-block; margin-top:8px; background:var(--badgeBg); color:var(--badgeFg); border:none; border-radius:10px; padding:9px 14px; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit}
 html.car .insthelp{font-size:16px}
 html.car .insthelp .ihdl{min-height:60px; font-size:17px}
+#mextra{margin-top:12px}
+#results:empty{margin-top:0}
+/* clavier virtuel : la zone de recherche reste en haut, les résultats juste dessous */
+html.car #modal,html.car.wide #modal{padding:14px 16px 10px; align-items:flex-start}
+html.car #modal.kbd #mextra,html.car #modal.kbd #btnClose{display:none}
+html.car #modal.kbd #results{max-height:30vh}
 .mapko{padding:30px 14px; text-align:center; color:var(--mist); font-size:13px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
 </style>
@@ -535,7 +543,7 @@ html.car .insthelp .ihdl{min-height:60px; font-size:17px}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v58</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v59</b></p>
     </div>
   </header>
 
@@ -700,18 +708,20 @@ html.car .insthelp .ihdl{min-height:60px; font-size:17px}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v58</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v59</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
 
 <div id="modal">
   <div class="mbox">
-    <div id="favWrap"></div>
-    <button class="cmp" id="btnFav" style="width:100%;margin-bottom:10px">★ Ajouter le spot actuel aux favoris</button>
-    <button class="cmp" id="btnHome" style="width:100%;margin-bottom:10px">📌 Démarrer toujours sur ce spot (cet appareil)</button>
-    <input id="q" type="search" placeholder="Ville, plage, port… (ex : Lacanau)" autocomplete="off">
+    <input id="q" type="search" placeholder="Ville, plage, port… (ex : Lacanau)" autocomplete="off" enterkeyhint="search">
     <div id="results"></div>
+    <div id="mextra">
+      <div id="favWrap"></div>
+      <button class="cmp" id="btnFav" style="width:100%;margin-bottom:10px">★ Ajouter le spot actuel aux favoris</button>
+      <button class="cmp" id="btnHome" style="width:100%;margin-bottom:10px">📌 Démarrer toujours sur ce spot (cet appareil)</button>
+    </div>
     <button class="ghost" id="btnClose" style="width:100%">Fermer</button>
   </div>
 </div>
@@ -727,12 +737,12 @@ var PLAT={
   ios:/iPhone|iPad|iPod/.test(UA)||(/Macintosh/.test(UA)&&navigator.maxTouchPoints>1),
   android:/Android/.test(UA),
   tesla:/Tesla|QtCarBrowser/i.test(UA),
-  carua:/Tesla|QtCarBrowser|Automotive|AAOS|XPENG|Xmart|Polestar|Harman|\bCar\b|VehicleOS|Vivaldi.*Android(?!.*Mobile)/i.test(UA),
+  carua:/Tesla|QtCarBrowser|Automotive|AAOS|XPENG|Xmart|Polestar|Harman|\bCar\b|VehicleOS|Renault|Volvo|Rivian|Lucid/i.test(UA)
+    ||(/Android/.test(UA)&&/Vivaldi/.test(UA)&&!/Mobile/.test(UA)),
   touch:("ontouchstart" in window)||(navigator.maxTouchPoints>0)
 };
+PLAT.vivaldiCar=/Android/.test(UA)&&/Vivaldi/.test(UA)&&!/Mobile/.test(UA);
 PLAT.mac=/Macintosh/.test(UA)&&!PLAT.ios;
-/* Android sans « Mobile » = tablette… ou voiture Android Automotive (Renault, Polestar, Volvo : Vivaldi s'annonce comme Chrome tablette) */
-PLAT.atab=PLAT.android&&!/Mobile/.test(UA);
 PLAT.safari=/Safari/.test(UA)&&!/Chrome|CriOS|FxiOS|EdgiOS|Android/.test(UA);
 PLAT.desktop=!PLAT.ios&&!PLAT.android&&!PLAT.carua;
 var CARPREF="auto";
@@ -3265,18 +3275,18 @@ function localNote(){
 }
 function installHelpHTML(){
   var h="";
-  var spotTip="<p style='margin-top:8px'>Astuce : si la voiture ne donne pas sa position, touche le nom du spot en haut puis « 📌 Démarrer toujours sur ce spot ».</p>";
-  var vivaldi="<ol>"
-     +"<li>Ouvre le menu du navigateur <b>Vivaldi</b> (icône V ou ⋮).</li>"
-     +"<li>Choisis <b>« Ajouter aux Speed Dials »</b> (ou <b>Ajouter aux favoris ☆</b>).</li>"
-     +"<li>Estran apparaît en vignette sur la page d'accueil du navigateur (nouvel onglet) : un toucher suffit.</li></ol>";
-  if(PLAT.tesla){
-    h="<b>Tesla</b> : le navigateur n'a pas d'écran d'accueil pour les sites web. Le plus pratique :<ol>"
-     +"<li>Touche l'étoile ☆ de la barre d'adresse pour mettre Estran en <b>favori</b>.</li>"
-     +"<li>Ensuite, dans le navigateur, ouvre Estran depuis tes favoris.</li></ol>"+spotTip;
-  }else if(CARON||PLAT.atab){
-    h="<b>"+(CARON?"Voiture Android (Renault OpenR Link, Polestar, Volvo…)":"Tablette Android ou voiture (Renault OpenR Link…)")+"</b> : dans la voiture il n'y a pas d'écran d'accueil pour les sites, on utilise la page d'accueil du navigateur."+vivaldi
-     +(CARON?"":"<p style='margin-top:8px'>Sur une <b>tablette</b> : menu ⋮ de Chrome → <b>« Ajouter à l'écran d'accueil »</b>.</p>")+spotTip;
+  if(PLAT.vivaldiCar){
+    h="<b>Renault et voitures Google intégré (navigateur Vivaldi)</b> : pas d'écran d'accueil pour les sites, mais la <b>Numérotation rapide</b> de Vivaldi fait office d'icône :<ol>"
+     +"<li>Ouvre un <b>nouvel onglet</b> : la page d'accueil de Vivaldi affiche la Numérotation rapide.</li>"
+     +"<li>Touche la tuile <b>« + »</b>, puis colle ou tape l'adresse <b>"+shortcutURL()+"</b>.</li>"
+     +"<li>La tuile Estran apparaît à chaque nouvel onglet. Tu peux aussi l'ajouter aux favoris ☆.</li></ol>"
+     +"Astuce : si la voiture ne donne pas sa position, active « 📌 Démarrer sur ce spot » (touche le nom du spot en haut).";
+  }else if(PLAT.tesla||CARON){
+    h="<b>"+(PLAT.tesla?"Tesla":"Navigateur de voiture")+"</b> : pas d'écran d'accueil pour les sites web. Le plus pratique :<ol>"
+     +"<li>Si ton navigateur propose une étoile ☆ ou un menu Favoris, ajoute Estran aux <b>favoris</b>.</li>"
+     +"<li>Sinon, le navigateur rouvre en général le dernier site visité : laisse Estran ouvert en quittant la voiture.</li>"
+     +"<li>En dernier recours, tape l'adresse <b>"+shortcutURL().replace("https://","")+"</b> (ou scanne le QR code avec ton téléphone pour la retrouver).</li></ol>"
+     +"Astuce : active « 📌 Démarrer sur ce spot » (touche le nom du spot en haut) si la voiture ne donne pas sa position.";
   }else if(PLAT.ios){
     var saf=PLAT.safari;
     h="<b>iPhone / iPad</b>"+(saf?"":" — ouvre d'abord cette page dans <b>Safari</b> (ou utilise le bouton Partager de ton navigateur)")+" :<ol>"
@@ -3323,7 +3333,7 @@ function onInstallClick(){
 }
 function homeHintSetup(){
   var el=$("#homeHow");if(!el)return;
-  if(PLAT.ios)el.textContent="dans Safari : bouton Partager ⎋ → « Sur l'écran d'accueil »";
+  if(PLAT.ios)el.textContent="dans Safari : bouton Partager ⬆︎ → « Sur l'écran d'accueil »";
   else if(PLAT.android)el.textContent="dans le navigateur : menu ⋮ → « Ajouter à l'écran d'accueil »";
   else el.textContent="ajoute-le à tes favoris (Ctrl+D, ou ⌘+D sur Mac) ou épingle l'onglet";
 }
@@ -3368,11 +3378,40 @@ function init(){
     if(radar.map)radarLoad();
     if(state.la!=null)fetchAll(state.la,state.lo,state.label,false);else locate(false);
   });
-  var openModal=function(){renderFavs();renderHomeBtn();$("#modal").classList.add("open");$("#q").focus();};
+  var openModal=function(){
+    renderFavs();renderHomeBtn();$("#modal").classList.add("open");
+    /* en voiture, pas de focus auto : le clavier plein écran cacherait tout ; on tape dans le champ quand on veut */
+    if(!CARON)$("#q").focus();
+  };
+  var qEl=$("#q"), mEl=$("#modal");
+  var fitResults=function(){
+    var r=$("#results");if(!r)return;
+    var vv=window.visualViewport;
+    if(vv&&document.activeElement===qEl){
+      var top=qEl.getBoundingClientRect().bottom;
+      var room=Math.floor(vv.height+vv.offsetTop-top-24);
+      r.style.maxHeight=(room>120?room:120)+"px";
+    }else r.style.maxHeight="";
+  };
+  qEl.addEventListener("focus",function(){mEl.classList.add("kbd");setTimeout(fitResults,350);});
+  qEl.addEventListener("blur",function(){setTimeout(function(){if(document.activeElement!==qEl){mEl.classList.remove("kbd");fitResults();}},150);});
+  if(window.visualViewport)window.visualViewport.addEventListener("resize",fitResults);
+  qEl.addEventListener("keydown",function(e){
+    if(e.key==="Enter"||e.keyCode===13){
+      e.preventDefault();
+      var v=this.value.trim();clearTimeout(qTimer);
+      if(v.length>=2)doSearch(v);
+      this.blur();
+    }
+  });
   $("#locPill").addEventListener("click",openModal);
   $("#btnManual").addEventListener("click",openModal);
-  $("#btnClose").addEventListener("click",function(){$("#modal").classList.remove("open");});
-  $("#modal").addEventListener("click",function(e){if(e.target.id==="modal")$("#modal").classList.remove("open");});
+  $("#btnClose").addEventListener("click",function(){$("#modal").classList.remove("open","kbd");});
+  /* fermeture par le fond seulement si l'appui a commencé ET fini sur le fond (évite les fermetures quand la mise en page bouge sous le doigt) */
+  var mDownBg=false;
+  $("#modal").addEventListener("mousedown",function(e){mDownBg=(e.target.id==="modal");});
+  $("#modal").addEventListener("touchstart",function(e){mDownBg=(e.target.id==="modal");},{passive:true});
+  $("#modal").addEventListener("click",function(e){if(e.target.id==="modal"&&mDownBg)$("#modal").classList.remove("open","kbd");mDownBg=false;});
   $("#q").addEventListener("input",function(){
     var v=this.value.trim();
     clearTimeout(qTimer);
