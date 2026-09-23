@@ -502,7 +502,9 @@ html.car .idrow .idn{font-size:17px}
 html.car .fcard .fn{font-size:17px}
 html.car .frow{font-size:15px}
 html.car .frow .fk{width:120px}
-html.car .qrbox{width:220px}
+html.car .qrbox{width:220px; align-self:center}
+html.car .sharewrap{flex-direction:column; align-items:stretch}
+html.car .shareurl{text-align:center}
 html.car .toast{font-size:17px; padding:16px 22px; bottom:40px}
 html.car #radarMap{height:420px}
 html.car .gmap,html.car #gpMap{height:440px}
@@ -535,7 +537,7 @@ html.car .insthelp .ihdl{min-height:60px; font-size:17px}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v57</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v58</b></p>
     </div>
   </header>
 
@@ -700,7 +702,7 @@ html.car .insthelp .ihdl{min-height:60px; font-size:17px}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v57</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v58</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -727,9 +729,11 @@ var PLAT={
   ios:/iPhone|iPad|iPod/.test(UA)||(/Macintosh/.test(UA)&&navigator.maxTouchPoints>1),
   android:/Android/.test(UA),
   tesla:/Tesla|QtCarBrowser/i.test(UA),
-  carua:/Tesla|QtCarBrowser|Automotive|AAOS|XPENG|Xmart|Polestar|Harman|\bCar\b|VehicleOS|Vivaldi.*Android(?!.*Mobile)/i.test(UA),
+  carua:/Tesla|QtCarBrowser|Automotive|AAOS|XPENG|Xmart|Polestar|Harman|\bCar\b|VehicleOS|Renault|Volvo|Rivian|Lucid/i.test(UA)
+    ||(/Android/.test(UA)&&/Vivaldi/.test(UA)&&!/Mobile/.test(UA)),
   touch:("ontouchstart" in window)||(navigator.maxTouchPoints>0)
 };
+PLAT.vivaldiCar=/Android/.test(UA)&&/Vivaldi/.test(UA)&&!/Mobile/.test(UA);
 PLAT.mac=/Macintosh/.test(UA)&&!PLAT.ios;
 PLAT.safari=/Safari/.test(UA)&&!/Chrome|CriOS|FxiOS|EdgiOS|Android/.test(UA);
 PLAT.desktop=!PLAT.ios&&!PLAT.android&&!PLAT.carua;
@@ -3263,10 +3267,17 @@ function localNote(){
 }
 function installHelpHTML(){
   var h="";
-  if(PLAT.tesla||CARON){
-    h="<b>Navigateur de voiture</b> : il n'a pas d'écran d'accueil pour les sites web. Le plus pratique :<ol>"
-     +"<li>Touche l'étoile ☆ à droite de la barre d'adresse pour mettre Estran en <b>favori</b>.</li>"
-     +"<li>Ensuite, ouvre le navigateur : Estran est dans les favoris, en un geste.</li></ol>"
+  if(PLAT.vivaldiCar){
+    h="<b>Renault et voitures Google intégré (navigateur Vivaldi)</b> : pas d'écran d'accueil pour les sites, mais la <b>Numérotation rapide</b> de Vivaldi fait office d'icône :<ol>"
+     +"<li>Ouvre un <b>nouvel onglet</b> : la page d'accueil de Vivaldi affiche la Numérotation rapide.</li>"
+     +"<li>Touche la tuile <b>« + »</b>, puis colle ou tape l'adresse <b>"+shortcutURL()+"</b>.</li>"
+     +"<li>La tuile Estran apparaît à chaque nouvel onglet. Tu peux aussi l'ajouter aux favoris ☆.</li></ol>"
+     +"Astuce : si la voiture ne donne pas sa position, active « 📌 Démarrer sur ce spot » (touche le nom du spot en haut).";
+  }else if(PLAT.tesla||CARON){
+    h="<b>"+(PLAT.tesla?"Tesla":"Navigateur de voiture")+"</b> : pas d'écran d'accueil pour les sites web. Le plus pratique :<ol>"
+     +"<li>Si ton navigateur propose une étoile ☆ ou un menu Favoris, ajoute Estran aux <b>favoris</b>.</li>"
+     +"<li>Sinon, le navigateur rouvre en général le dernier site visité : laisse Estran ouvert en quittant la voiture.</li>"
+     +"<li>En dernier recours, tape l'adresse <b>"+shortcutURL().replace("https://","")+"</b> (ou scanne le QR code avec ton téléphone pour la retrouver).</li></ol>"
      +"Astuce : active « 📌 Démarrer sur ce spot » (touche le nom du spot en haut) si la voiture ne donne pas sa position.";
   }else if(PLAT.ios){
     var saf=PLAT.safari;
@@ -3314,7 +3325,7 @@ function onInstallClick(){
 }
 function homeHintSetup(){
   var el=$("#homeHow");if(!el)return;
-  if(PLAT.ios)el.textContent="dans Safari : bouton Partager ⎋ → « Sur l'écran d'accueil »";
+  if(PLAT.ios)el.textContent="dans Safari : bouton Partager ⬆︎ → « Sur l'écran d'accueil »";
   else if(PLAT.android)el.textContent="dans le navigateur : menu ⋮ → « Ajouter à l'écran d'accueil »";
   else el.textContent="ajoute-le à tes favoris (Ctrl+D, ou ⌘+D sur Mac) ou épingle l'onglet";
 }
