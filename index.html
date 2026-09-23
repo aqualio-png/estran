@@ -502,9 +502,7 @@ html.car .idrow .idn{font-size:17px}
 html.car .fcard .fn{font-size:17px}
 html.car .frow{font-size:15px}
 html.car .frow .fk{width:120px}
-html.car .qrbox{width:220px; align-self:center}
-html.car .sharewrap{flex-direction:column; align-items:stretch}
-html.car .shareurl{text-align:center}
+html.car .qrbox{width:220px}
 html.car .toast{font-size:17px; padding:16px 22px; bottom:40px}
 html.car #radarMap{height:420px}
 html.car .gmap,html.car #gpMap{height:440px}
@@ -729,12 +727,12 @@ var PLAT={
   ios:/iPhone|iPad|iPod/.test(UA)||(/Macintosh/.test(UA)&&navigator.maxTouchPoints>1),
   android:/Android/.test(UA),
   tesla:/Tesla|QtCarBrowser/i.test(UA),
-  carua:/Tesla|QtCarBrowser|Automotive|AAOS|XPENG|Xmart|Polestar|Harman|\bCar\b|VehicleOS|Renault|Volvo|Rivian|Lucid/i.test(UA)
-    ||(/Android/.test(UA)&&/Vivaldi/.test(UA)&&!/Mobile/.test(UA)),
+  carua:/Tesla|QtCarBrowser|Automotive|AAOS|XPENG|Xmart|Polestar|Harman|\bCar\b|VehicleOS|Vivaldi.*Android(?!.*Mobile)/i.test(UA),
   touch:("ontouchstart" in window)||(navigator.maxTouchPoints>0)
 };
-PLAT.vivaldiCar=/Android/.test(UA)&&/Vivaldi/.test(UA)&&!/Mobile/.test(UA);
 PLAT.mac=/Macintosh/.test(UA)&&!PLAT.ios;
+/* Android sans « Mobile » = tablette… ou voiture Android Automotive (Renault, Polestar, Volvo : Vivaldi s'annonce comme Chrome tablette) */
+PLAT.atab=PLAT.android&&!/Mobile/.test(UA);
 PLAT.safari=/Safari/.test(UA)&&!/Chrome|CriOS|FxiOS|EdgiOS|Android/.test(UA);
 PLAT.desktop=!PLAT.ios&&!PLAT.android&&!PLAT.carua;
 var CARPREF="auto";
@@ -3267,18 +3265,18 @@ function localNote(){
 }
 function installHelpHTML(){
   var h="";
-  if(PLAT.vivaldiCar){
-    h="<b>Renault et voitures Google intégré (navigateur Vivaldi)</b> : pas d'écran d'accueil pour les sites, mais la <b>Numérotation rapide</b> de Vivaldi fait office d'icône :<ol>"
-     +"<li>Ouvre un <b>nouvel onglet</b> : la page d'accueil de Vivaldi affiche la Numérotation rapide.</li>"
-     +"<li>Touche la tuile <b>« + »</b>, puis colle ou tape l'adresse <b>"+shortcutURL()+"</b>.</li>"
-     +"<li>La tuile Estran apparaît à chaque nouvel onglet. Tu peux aussi l'ajouter aux favoris ☆.</li></ol>"
-     +"Astuce : si la voiture ne donne pas sa position, active « 📌 Démarrer sur ce spot » (touche le nom du spot en haut).";
-  }else if(PLAT.tesla||CARON){
-    h="<b>"+(PLAT.tesla?"Tesla":"Navigateur de voiture")+"</b> : pas d'écran d'accueil pour les sites web. Le plus pratique :<ol>"
-     +"<li>Si ton navigateur propose une étoile ☆ ou un menu Favoris, ajoute Estran aux <b>favoris</b>.</li>"
-     +"<li>Sinon, le navigateur rouvre en général le dernier site visité : laisse Estran ouvert en quittant la voiture.</li>"
-     +"<li>En dernier recours, tape l'adresse <b>"+shortcutURL().replace("https://","")+"</b> (ou scanne le QR code avec ton téléphone pour la retrouver).</li></ol>"
-     +"Astuce : active « 📌 Démarrer sur ce spot » (touche le nom du spot en haut) si la voiture ne donne pas sa position.";
+  var spotTip="<p style='margin-top:8px'>Astuce : si la voiture ne donne pas sa position, touche le nom du spot en haut puis « 📌 Démarrer toujours sur ce spot ».</p>";
+  var vivaldi="<ol>"
+     +"<li>Ouvre le menu du navigateur <b>Vivaldi</b> (icône V ou ⋮).</li>"
+     +"<li>Choisis <b>« Ajouter aux Speed Dials »</b> (ou <b>Ajouter aux favoris ☆</b>).</li>"
+     +"<li>Estran apparaît en vignette sur la page d'accueil du navigateur (nouvel onglet) : un toucher suffit.</li></ol>";
+  if(PLAT.tesla){
+    h="<b>Tesla</b> : le navigateur n'a pas d'écran d'accueil pour les sites web. Le plus pratique :<ol>"
+     +"<li>Touche l'étoile ☆ de la barre d'adresse pour mettre Estran en <b>favori</b>.</li>"
+     +"<li>Ensuite, dans le navigateur, ouvre Estran depuis tes favoris.</li></ol>"+spotTip;
+  }else if(CARON||PLAT.atab){
+    h="<b>"+(CARON?"Voiture Android (Renault OpenR Link, Polestar, Volvo…)":"Tablette Android ou voiture (Renault OpenR Link…)")+"</b> : dans la voiture il n'y a pas d'écran d'accueil pour les sites, on utilise la page d'accueil du navigateur."+vivaldi
+     +(CARON?"":"<p style='margin-top:8px'>Sur une <b>tablette</b> : menu ⋮ de Chrome → <b>« Ajouter à l'écran d'accueil »</b>.</p>")+spotTip;
   }else if(PLAT.ios){
     var saf=PLAT.safari;
     h="<b>iPhone / iPad</b>"+(saf?"":" — ouvre d'abord cette page dans <b>Safari</b> (ou utilise le bouton Partager de ton navigateur)")+" :<ol>"
@@ -3325,7 +3323,7 @@ function onInstallClick(){
 }
 function homeHintSetup(){
   var el=$("#homeHow");if(!el)return;
-  if(PLAT.ios)el.textContent="dans Safari : bouton Partager ⬆︎ → « Sur l'écran d'accueil »";
+  if(PLAT.ios)el.textContent="dans Safari : bouton Partager ⎋ → « Sur l'écran d'accueil »";
   else if(PLAT.android)el.textContent="dans le navigateur : menu ⋮ → « Ajouter à l'écran d'accueil »";
   else el.textContent="ajoute-le à tes favoris (Ctrl+D, ou ⌘+D sur Mac) ou épingle l'onglet";
 }
