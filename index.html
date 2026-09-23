@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23081821'/%3E%3Cpath d='M6 40c6-6 10-6 16 0s10 6 16 0 10-6 16 0' stroke='%2349C6D6' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3Cpath d='M6 52c6-6 10-6 16 0s10 6 16 0 10-6 16 0' stroke='%23E4D5B4' stroke-width='4' fill='none' stroke-linecap='round' opacity='.75'/%3E%3Ccircle cx='46' cy='18' r='7' fill='%23E4D5B4'/%3E%3C/svg%3E">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23081821'/%3E%3Cpath d='M6 40c6-6 10-6 16 0s10 6 16 0 10-6 16 0' stroke='%2349C6D6' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3Cpath d='M6 52c6-6 10-6 16 0s10 6 16 0 10-6 16 0' stroke='%23E4D5B4' stroke-width='4' fill='none' stroke-linecap='round' opacity='.75'/%3E%3Ccircle cx='46' cy='18' r='7' fill='%23E4D5B4'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" id="touchIcon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23081821'/%3E%3Cpath d='M6 40c6-6 10-6 16 0s10 6 16 0 10-6 16 0' stroke='%2349C6D6' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3Cpath d='M6 52c6-6 10-6 16 0s10 6 16 0 10-6 16 0' stroke='%23E4D5B4' stroke-width='4' fill='none' stroke-linecap='round' opacity='.75'/%3E%3Ccircle cx='46' cy='18' r='7' fill='%23E4D5B4'/%3E%3C/svg%3E">
 <title>Estran - marées, surf &amp; pêche du bord</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -306,7 +306,7 @@ button.cmp{cursor:pointer; font-family:inherit}
 .ghost{background:transparent; border:1px solid var(--line); color:var(--foam); border-radius:999px; padding:10px 20px; font-weight:600; font-size:14px; cursor:pointer; margin-top:10px}
 /* search modal */
 #modal{
-  position:fixed; inset:0; background:rgba(4,12,17,.82); backdrop-filter:blur(4px);
+  position:fixed; top:0; right:0; bottom:0; left:0; background:rgba(4,12,17,.82); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px);
   display:none; align-items:flex-start; justify-content:center; z-index:50; padding:60px 16px 20px;
 }
 #modal.open{display:flex}
@@ -324,7 +324,7 @@ footer{color:var(--mist); font-size:11px; line-height:1.5; padding:6px 4px 0}
   position:fixed; left:50%; bottom:26px; transform:translateX(-50%);
   background:var(--badgeBg); color:var(--badgeFg); font-weight:600; font-size:13px;
   padding:11px 16px; border-radius:14px; z-index:60; opacity:0; transition:opacity .25s;
-  pointer-events:none; white-space:normal; max-width:92vw; width:max-content; text-align:center; line-height:1.4;
+  pointer-events:none; white-space:normal; max-width:92vw; width:-webkit-max-content; width:max-content; text-align:center; line-height:1.4;
 }
 .toast.show{opacity:1}
 /* vent en direct (drone) */
@@ -446,6 +446,85 @@ body.sun .dalt{border-width:2px}
 .uvmid{color:var(--sand)}
 .uvwarn{color:var(--peche)}
 .uvno{color:var(--bad)}
+
+/* ===== v52 : multiplateforme (PC, mobiles, navigateurs de voiture) ===== */
+html{-webkit-text-size-adjust:100%; text-size-adjust:100%}
+.cols{display:flex; gap:16px; align-items:flex-start}
+.col{flex:1 1 0; min-width:0}
+/* écrans tactiles : cibles plus confortables */
+@media (hover:none) and (pointer:coarse){
+  .iconbtn{width:44px; height:44px}
+  .tab{padding:10px 15px}
+  .rline{padding:13px 8px}
+}
+/* PC et grands écrans : deux colonnes */
+html.wide .wrap{max-width:1200px; padding:0 22px}
+html.wide header{padding-top:calc(20px + env(safe-area-inset-top))}
+html.wide .gmap,html.wide #gpMap{height:380px}
+html.wide #radarMap{height:360px}
+html.wide #modal{align-items:center}
+/* affichage voiture (Tesla, Renault, Xpeng…) : gros textes, cibles >= 60 px, rien au survol */
+html.car body{font-size:18px}
+html.car .wrap{max-width:none; padding:0 20px}
+html.car.wide .wrap{max-width:1600px}
+html.car .brand h1{font-size:34px}
+html.car .brand p{font-size:13px}
+html.car .locpill{min-height:64px; font-size:19px; padding:12px 20px}
+html.car .iconbtn{width:64px; height:64px; font-size:26px}
+html.car .tab{min-height:60px; padding:14px 22px; font-size:17px}
+html.car .nexttide .big{font-size:28px}
+html.car .nexttide .sub,html.car .nexttide .lbl,html.car .coefbox .lbl{font-size:15px}
+html.car .coefbox .num{font-size:60px}
+html.car .trk{margin-top:12px}
+html.car .trk .tl{width:64px; font-size:13px}
+html.car .trk .bar{height:22px; border-radius:8px}
+html.car .trk.trkrow,html.car .trk{min-height:36px}
+html.car .hscale{font-size:12px}
+html.car .card{padding:18px; border-radius:20px}
+html.car .card h2{font-size:20px}
+html.car .chip{min-height:52px; font-size:16px; padding:10px 14px}
+html.car .zhint{font-size:14px}
+html.car .cond .v{font-size:21px}
+html.car .cond .u{font-size:12px}
+html.car .t-time{font-size:22px}
+html.car .t-c{font-size:24px}
+html.car .cmp,html.car .ghost,html.car .cta,html.car #err button,html.car .sharebtns button,html.car .linkbtn,html.car .maplink,html.car .mopen{
+  min-height:60px; font-size:17px; display:flex; align-items:center; justify-content:center}
+html.car .dalt .altchip{min-height:64px}
+html.car .dalt .altchip b{font-size:18px}
+html.car .favchip{min-height:60px; font-size:17px; padding:10px 14px 10px 18px}
+html.car .favchip .x{font-size:22px; padding:0 8px}
+html.car .rline{min-height:64px; padding:14px 10px; font-size:18px}
+html.car .mbox{max-width:680px; padding:22px}
+html.car .mbox input,html.car .callbl input,html.car .idfilter{min-height:60px; font-size:20px}
+html.car .idrow{min-height:60px; padding:14px 16px}
+html.car .idrow .idn{font-size:17px}
+html.car .fcard .fn{font-size:17px}
+html.car .frow{font-size:15px}
+html.car .frow .fk{width:120px}
+html.car .qrbox{width:220px}
+html.car .toast{font-size:17px; padding:16px 22px; bottom:40px}
+html.car #radarMap{height:420px}
+html.car .gmap,html.car #gpMap{height:440px}
+html.car .leaflet-touch .leaflet-bar a{width:52px; height:52px; line-height:52px; font-size:26px}
+/* fonctions sans objet en voiture : photo, boussole, copier, raccourci écran d'accueil */
+html.car .idbtn,html.car #idPhoto,html.car #idImg,html.car .idcamhint,html.car #btnCopy,html.car #btnShare,html.car #homeHint{display:none!important}
+html.nocompass #cmpBtn,html.nocompass .rhint,html.nocompass #cmpHd{display:none}
+.carrow{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px; padding-top:12px; border-top:1px solid var(--line)}
+.carrow span{color:var(--mist); font-size:12.5px; flex:1; min-width:180px}
+.carrow button{background:var(--panel2); border:1px solid var(--line); color:var(--foam); border-radius:10px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit}
+html.car .carrow span{font-size:15px}
+html.car .carrow button{min-height:60px; font-size:17px; padding:10px 20px}
+.radbase.dark{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9)}
+.sharebtns .instbtn{background:var(--badgeBg); color:var(--badgeFg); border-color:var(--badgeBg)}
+.insthelp{margin-top:12px; background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:13px; line-height:1.5}
+.insthelp b{color:var(--surf)}
+.insthelp ol{margin:6px 0 0 20px}
+.insthelp li{margin:3px 0}
+.insthelp .ihdl{display:inline-block; margin-top:8px; background:var(--badgeBg); color:var(--badgeFg); border:none; border-radius:10px; padding:9px 14px; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit}
+html.car .insthelp{font-size:16px}
+html.car .insthelp .ihdl{min-height:60px; font-size:17px}
+.mapko{padding:30px 14px; text-align:center; color:var(--mist); font-size:13px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
 </style>
 </head>
@@ -456,7 +535,7 @@ body.sun .dalt{border-width:2px}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v51</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v57</b></p>
     </div>
   </header>
 
@@ -527,7 +606,7 @@ body.sun .dalt{border-width:2px}
 
     <section class="card" id="identSection">
       <h2><span class="sw" style="background:var(--peche)"></span>📸 Identifier une espèce</h2>
-      <p class="zhint" style="margin:2px 0 10px">Prends ta prise en photo, puis compare-la au guide des espèces de ton spot et touche la bonne pour voir sa réglementation. Identification assistée — la photo reste sur ton téléphone, rien n'est envoyé.</p>
+      <p class="zhint idcamhint" style="margin:2px 0 10px">Prends ta prise en photo, puis compare-la au guide des espèces de ton spot et touche la bonne pour voir sa réglementation. Identification assistée — la photo reste sur ton téléphone, rien n'est envoyé.</p>
       <label class="idbtn" for="idPhoto">📷 Prendre / choisir une photo</label>
       <input type="file" accept="image/*" capture="environment" id="idPhoto" hidden>
       <img id="idImg" alt="Photo de la prise" style="display:none">
@@ -588,7 +667,7 @@ body.sun .dalt{border-width:2px}
         <span class="radtime" id="radTime"></span>
       </div>
       <div id="rainNext"></div>
-      <p class="zhint">Observation radar réelle (RainViewer, image toutes les 10 min), actualisée toutes les 5 minutes et à chaque retour dans Estran : ce que les modèles ratent, le radar le montre. Zoome pour le détail local. La frise ci-dessous distingue la pluie sur ton point (barre franche) et le risque d averse dans un rayon de ~15 km (barre pâle). Les dernières images marquées «&nbsp;prévision&nbsp;» sont une extrapolation courte.</p>
+      <p class="zhint">Observation radar réelle (RainViewer, image toutes les 10 min), actualisée toutes les 5 minutes et à chaque retour dans Estran : ce que les modèles ratent, le radar le montre. La pluie est tracée jusqu'au niveau régional ; en zoomant plus, l'image est agrandie. La frise ci-dessous distingue la pluie sur ton point (barre franche) et le risque d averse dans un rayon de ~15 km (barre pâle). L'animation couvre les 2 dernières heures observées (RainViewer ne fournit plus de prévision radar gratuite depuis 2026).</p>
     </section>
 
     <section class="card">
@@ -607,18 +686,21 @@ body.sun .dalt{border-width:2px}
             <button id="btnShare">Partager le lien</button>
             <button id="btnCopy">Copier l'adresse</button>
             <button id="btnMini">Ouvrir le mode compact</button>
+            <button id="btnInstall" class="instbtn">📲 Créer un raccourci sur la page d'accueil</button>
           </div>
         </div>
       </div>
-      <p class="zhint" style="margin-top:10px"><b>Raccourci « coup d'œil »</b> : ouvre le mode compact, puis dans Chrome ⋮ → « Ajouter à l'écran d'accueil ». Tu obtiens une seconde icône qui affiche l'essentiel (marée, coef, fenêtres, vent) en un écran, sans charger les cartes.</p>
+      <div class="insthelp" id="instHelp" style="display:none"></div>
+      <p class="zhint" id="homeHint" style="margin-top:10px"><b>Raccourci « coup d'œil »</b> : ouvre le mode compact, puis <span id="homeHow">dans Chrome ⋮ → « Ajouter à l'écran d'accueil »</span>. Tu obtiens une seconde icône qui affiche l'essentiel (marée, coef, fenêtres, vent) en un écran, sans charger les cartes.</p>
       <p class="zhint" style="margin-top:8px">Fais scanner ce code avec l'appareil photo d'un téléphone : l'app s'ouvre directement, sans installation.</p>
+      <div class="carrow"><span id="carLbl">Affichage voiture : automatique</span><button type="button" id="btnCar">Changer</button></div>
     </section>
 
     <footer>
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v51</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v57</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -627,6 +709,7 @@ body.sun .dalt{border-width:2px}
   <div class="mbox">
     <div id="favWrap"></div>
     <button class="cmp" id="btnFav" style="width:100%;margin-bottom:10px">★ Ajouter le spot actuel aux favoris</button>
+    <button class="cmp" id="btnHome" style="width:100%;margin-bottom:10px">📌 Démarrer toujours sur ce spot (cet appareil)</button>
     <input id="q" type="search" placeholder="Ville, plage, port… (ex : Lacanau)" autocomplete="off">
     <div id="results"></div>
     <button class="ghost" id="btnClose" style="width:100%">Fermer</button>
@@ -638,6 +721,51 @@ body.sun .dalt{border-width:2px}
 "use strict";
 var $=function(s){return document.querySelector(s);};
 var CACHE_KEY="estran_v5";
+/* ---------- v52 : plateforme & réseau ---------- */
+var UA=String(navigator.userAgent||"");
+var PLAT={
+  ios:/iPhone|iPad|iPod/.test(UA)||(/Macintosh/.test(UA)&&navigator.maxTouchPoints>1),
+  android:/Android/.test(UA),
+  tesla:/Tesla|QtCarBrowser/i.test(UA),
+  carua:/Tesla|QtCarBrowser|Automotive|AAOS|XPENG|Xmart|Polestar|Harman|\bCar\b|VehicleOS|Vivaldi.*Android(?!.*Mobile)/i.test(UA),
+  touch:("ontouchstart" in window)||(navigator.maxTouchPoints>0)
+};
+PLAT.mac=/Macintosh/.test(UA)&&!PLAT.ios;
+PLAT.safari=/Safari/.test(UA)&&!/Chrome|CriOS|FxiOS|EdgiOS|Android/.test(UA);
+PLAT.desktop=!PLAT.ios&&!PLAT.android&&!PLAT.carua;
+var CARPREF="auto";
+try{var _cp=localStorage.getItem("estran_car");if(_cp==="on"||_cp==="off")CARPREF=_cp;}catch(e){}
+(function(){var m=/[?&]car=(1|0|on|off|auto)/.exec(String(location.search));
+  if(m){CARPREF=(m[1]==="1"||m[1]==="on")?"on":(m[1]==="0"||m[1]==="off")?"off":"auto";try{localStorage.setItem("estran_car",CARPREF);}catch(e){}}})();
+var CARON=(CARPREF==="on")||(CARPREF==="auto"&&PLAT.carua);
+(function(){
+  var h=document.documentElement, c=h.className||"";
+  if(CARON)c+=" car";
+  var hasDO=("DeviceOrientationEvent" in window);
+  if(CARON||!PLAT.touch||!hasDO)c+=" nocompass";
+  h.className=c.replace(/^\s+/,"");
+})();
+/* fetch avec délai max (les navigateurs embarqués restent parfois bloqués sans réponse) + repli XHR */
+var _nativeFetch=(typeof window.fetch==="function")?window.fetch.bind(window):null;
+function xhrFetch(u){
+  return new Promise(function(res,rej){
+    var x=new XMLHttpRequest();
+    x.open("GET",u,true);
+    x.onload=function(){var t=x.responseText;res({ok:x.status>=200&&x.status<300,status:x.status,
+      text:function(){return Promise.resolve(t);},json:function(){return new Promise(function(ok,ko){try{ok(JSON.parse(t));}catch(e){ko(e);}});}});};
+    x.onerror=function(){rej(new Error("reseau"));};
+    x.send();
+  });
+}
+var fetch=function(u,o){
+  var p=_nativeFetch?_nativeFetch(u,o):xhrFetch(u);
+  return new Promise(function(res,rej){
+    var done=false;
+    var tm=setTimeout(function(){if(!done){done=true;rej(new Error("delai"));}},25000);
+    p.then(function(r){if(!done){done=true;clearTimeout(tm);res(r);}},function(e){if(!done){done=true;clearTimeout(tm);rej(e);}});
+  });
+};
+
 var TZ="auto";
 try{var _z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(_z)TZ=_z;}catch(e){}
 var TZQ=encodeURIComponent(TZ);
@@ -2108,8 +2236,12 @@ function radarShow(i){
   if(!radar.map||!radar.frames.length)return;
   radar.idx=(i+radar.frames.length)%radar.frames.length;
   var f=radar.frames[radar.idx];
-  var url=radar.host+f.path+"/512/{z}/{x}/{y}/4/1_1.png";
-  var nl=L.tileLayer(url,{opacity:0.75,tileSize:512,zoomOffset:-1,maxNativeZoom:9,maxZoom:12});
+  var url=radar.host+f.path+"/512/{z}/{x}/{y}/2/1_1.png";
+  /* API RainViewer gratuite depuis 01/2026 : tuiles jusqu'au zoom 7 seulement (512 px, décalage -1 => zoom carte 8) ; au-delà, Leaflet agrandit la dernière tuile valide */
+  var nl=L.tileLayer(url,{opacity:0.8,tileSize:512,zoomOffset:-1,maxNativeZoom:8,maxZoom:18,crossOrigin:true});
+  nl.on("tileerror",function(){radar.terr=(radar.terr||0)+1;
+    if(radar.terr===6){var te=$("#radTime");if(te)te.textContent="Tuiles radar refusées par RainViewer — réessaie dans quelques minutes (↻).";}});
+  nl.on("tileload",function(){radar.terr=0;});
   nl.addTo(radar.map);
   if(radar.layer)radar.map.removeLayer(radar.layer);
   radar.layer=nl;
@@ -2130,8 +2262,9 @@ function radarLoad(){
     .then(function(j){
       if(!j||!j.radar)return;
       radar.host=j.host||"https://tilecache.rainviewer.com";
-      var past=j.radar.past||[], nc=j.radar.nowcast||[];
-      radar.frames=past.concat(nc);
+      /* la prévision (nowcast) n'existe plus dans l'API gratuite : on ne garde que l'observé */
+      var past=j.radar.past||[];
+      radar.frames=past.slice();
       radar.past=past.length;
       if(radar.frames.length&&!radar.timer)radarShow(radar.past-1);
     }).catch(function(){
@@ -2139,8 +2272,31 @@ function radarLoad(){
       if(tEl)tEl.textContent="Radar indisponible";
     });
 }
+/* fond de carte du radar : plan IGN (sans clé), assombri par filtre en thème nuit ; repli OpenStreetMap si l'IGN ne répond pas */
+function radarBase(force){
+  if(!radar.map||!window.L)return;
+  var want=force||radar.baseSrc||"ign";
+  var dark=(THEME==="night");
+  var key=want+":"+(dark?"d":"l");
+  if(radar.baseKey===key)return;
+  if(radar.base)radar.map.removeLayer(radar.base);
+  var bl, cls=dark?"radbase dark":"radbase";
+  if(want==="osm"){
+    bl=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {maxZoom:11,className:cls,attribution:"© OpenStreetMap · RainViewer"});
+  }else{
+    bl=L.tileLayer("https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&FORMAT=image/png",
+      {maxZoom:11,className:cls,attribution:"© IGN / Géoplateforme · RainViewer"});
+    var nerr=0;
+    bl.on("tileerror",function(){nerr++;if(nerr===4&&radar.baseSrc!=="osm"){radar.baseSrc="osm";radarBase("osm");}});
+  }
+  bl.addTo(radar.map);
+  if(bl.bringToBack)bl.bringToBack();
+  radar.base=bl;radar.baseKey=key;radar.baseSrc=want;
+}
 function initRadar(){
-  if(!window.L||state.la==null)return;
+  if(!window.L){var rm=document.getElementById("radarMap");if(rm&&!rm.innerHTML)rm.innerHTML="<div class='mapko'>Carte indisponible (bibliothèque cartographique non chargée). Le reste de l'app fonctionne.</div>";return;}
+  if(state.la==null)return;
   var el=document.getElementById("radarMap");if(!el)return;
   if(radar.map){
     radar.map.setView([state.la,state.lo],8);
@@ -2149,8 +2305,8 @@ function initRadar(){
     radarLoad();
     return;
   }
-  radar.map=L.map("radarMap",{zoomControl:true,maxZoom:12}).setView([state.la,state.lo],8);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:11,attribution:"© OpenStreetMap · RainViewer"}).addTo(radar.map);
+  radar.map=L.map("radarMap",{zoomControl:true,minZoom:4,maxZoom:11}).setView([state.la,state.lo],8);
+  radarBase();
   var RMC=themeCols(THEME);
   radar.marker=L.circleMarker([state.la,state.lo],{radius:6,color:RMC.now,weight:2,fillColor:RMC.curve,fillOpacity:0.95}).addTo(radar.map);
   setTimeout(function(){if(radar.map)radar.map.invalidateSize();},200);
@@ -2396,11 +2552,11 @@ var THEME_NAME={night:"nuit",day:"jour",sun:"plein soleil"};
 var THEME="night";
 function applyTheme(th,silent){
   THEME=(THEMES.indexOf(th)>=0)?th:"night";
-  document.body.className=((THEME==="night")?"":THEME)+(MINI?" mini":"");
+  document.body.className=((THEME==="night")?"":THEME)+(MINI?" mini":"")+(LAND?" land":"");
   var b=$("#btnTheme");
   if(b){b.textContent=THEME_ICON[THEME];b.title="Thème : "+THEME_NAME[THEME];}
   try{localStorage.setItem("estran_theme",THEME);}catch(e){}
-  if(M){renderDay();if(radar.map&&radar.frames.length)radarShow(radar.idx);}
+  if(M){renderDay();if(radar.map){radarBase();if(radar.frames.length)radarShow(radar.idx);}}
   if(!silent)toast("Thème "+THEME_NAME[THEME]);
 }
 function cycleTheme(){
@@ -2440,6 +2596,21 @@ function renderFavs(){
     })(chips[c]);
   }
 }
+function getHome(){try{var h=JSON.parse(localStorage.getItem("estran_home")||"null");return (h&&typeof h.la==="number")?h:null;}catch(e){return null;}}
+function renderHomeBtn(){
+  var b=$("#btnHome");if(!b)return;
+  var h=getHome();
+  b.textContent=h?("📌 Spot de démarrage : "+h.n+" — retirer"):"📌 Démarrer toujours sur ce spot (cet appareil)";
+}
+function toggleHome(){
+  var h=getHome();
+  if(h){try{localStorage.removeItem("estran_home");}catch(e){}renderHomeBtn();toast("Au démarrage, Estran utilisera à nouveau la position de l'appareil");return;}
+  if(state.la==null){toast("Aucun spot chargé");return;}
+  var n=(state.label||"Spot").replace(" (approx. IP)","").trim();
+  try{localStorage.setItem("estran_home",JSON.stringify({n:n,la:state.la,lo:state.lo}));}catch(e){toast("Impossible d'enregistrer sur ce navigateur");return;}
+  renderHomeBtn();
+  toast("Estran démarrera sur « "+n+" » sur cet appareil. Le bouton ◎ reste disponible pour le GPS.");
+}
 function addFav(){
   if(state.la==null){toast("Aucun spot chargé");return;}
   var n=(state.label||"Spot").replace(" (approx. IP)","").trim();
@@ -2466,7 +2637,12 @@ function copyUrl(){
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(u).then(function(){toast("Adresse copiée");},function(){toast(u);});
   }else{
-    toast(u);
+    try{
+      var ta=document.createElement("textarea");ta.value=u;ta.setAttribute("readonly","");
+      ta.style.position="fixed";ta.style.top="-100px";document.body.appendChild(ta);ta.select();
+      var ok=document.execCommand&&document.execCommand("copy");document.body.removeChild(ta);
+      toast(ok?"Adresse copiée":u);
+    }catch(e){toast(u);}
   }
 }
 
@@ -2545,7 +2721,7 @@ function renderMini(){
   for(var i=0;i<EXT.length;i++){if(EXT[i].t>now){nx=EXT[i];break;}}
   var coef=nx?coefAt(nx.t):null;
   var s=winState(SURF,62), p=winState(FISH,62), d=winState(DRONE,70);
-  var approx=/approx\. IP/.test(state.label||"");
+  var approx=isApproxSpot();
   var c=W&&W.current?W.current:null;
   var sst=null;
   if(state.sst&&state.sst.v!=null)sst=state.sst.v;
@@ -2656,7 +2832,7 @@ function processAll(){
   applyMode();
   var dotEl=document.querySelector("#locPill .dot");
   if(dotEl){
-    if(/approx\. IP/.test(state.label||""))dotEl.classList.add("approx");
+    if(isApproxSpot())dotEl.classList.add("approx");
     else dotEl.classList.remove("approx");
   }
   renderTabs();
@@ -2669,7 +2845,8 @@ function processAll(){
 /* ---------- zone drone (carte DGAC/IGN via Geoplateforme) ---------- */
 var gpz={map:null,marker:null};
 function initGpMap(){
-  if(!window.L||state.la==null)return;
+  if(!window.L){var gm=document.getElementById("gpMap");if(gm)gm.innerHTML="<div class='mapko'>Carte indisponible — utilise le lien Géoportail ci-dessous.</div>";return;}
+  if(state.la==null)return;
   var el=document.getElementById("gpMap");if(!el)return;
   var wmts="https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}";
   gpz.map=L.map("gpMap",{zoomControl:true}).setView([state.la,state.lo],12);
@@ -2750,6 +2927,8 @@ function probeMarine(la,lo){
 }
 
 function fetchAll(la,lo,label,silent){
+  if(!(silent==="auto"&&state.la!=null&&Math.abs(state.la-la)<1e-4&&Math.abs(state.lo-lo)<1e-4)){state.acc=PENDACC;}
+  PENDACC=null;
   if(!silent)show("#loading");
   var wu="https://api.open-meteo.com/v1/forecast?latitude="+la+"&longitude="+lo+"&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,precipitation_probability,temperature_2m,weather_code&minutely_15=precipitation,weather_code&daily=sunrise,sunset&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,temperature_2m,weather_code&timezone="+TZQ+"&forecast_days=8&models=meteofrance_seamless";
   var d15=0.14;
@@ -2843,9 +3022,16 @@ function reverseLabel(la,lo){
     }).catch(function(){});
 }
 
+function isApproxSpot(){return /approx\. IP/.test(state.label||"")||(state.acc!=null&&state.acc>3000);}
+var PENDACC=null;
 function onPos(pos,silent){
   var la=Math.round(pos.coords.latitude*10000)/10000;
   var lo=Math.round(pos.coords.longitude*10000)/10000;
+  var acc=pos.coords.accuracy;
+  PENDACC=(typeof acc==="number"&&acc>0)?acc:null;
+  if(PENDACC&&PENDACC>3000&&!silent){
+    toast("Position peu précise (± "+Math.round(PENDACC/1000)+" km) : sans puce GPS, le navigateur la devine via le réseau. Touche le nom du spot en haut pour choisir le bon, puis « 📌 Démarrer sur ce spot ».");
+  }
   fetchAll(la,lo,null,silent);
   reverseLabel(la,lo);
 }
@@ -2874,6 +3060,15 @@ function locIP(silent,why){
     }).catch(function(){gpsHardFail(silent,why||"Position introuvable.");});
   });
 }
+function gpsDeniedMsg(){
+  var fin=" Position approchée par IP en attendant.";
+  if(PLAT.tesla)return "Position refusée par le navigateur de la Tesla."+fin+" Choisis ton spot avec la pastille en haut (et ajoute-le aux favoris).";
+  if(CARON)return "Position refusée par le navigateur de la voiture : autorise la localisation dans ses réglages, ou choisis ton spot avec la pastille en haut."+fin;
+  if(PLAT.ios)return "GPS bloqué. Sur iPhone : Réglages > Confidentialité et sécurité > Service de localisation > Sites web Safari (ou le navigateur utilisé) > « Lorsque l'app est active », puis dans Safari : aA > Réglages du site web > Position > Autoriser."+fin;
+  if(PLAT.android)return "GPS bloqué pour ce site. Sur Chrome Android : menu ⋮ > Paramètres > Paramètres des sites > Position > autorise ce site. Vérifie aussi que la localisation Android est activée pour le navigateur."+fin;
+  if(PLAT.mac)return "Position bloquée. Sur Mac : Réglages Système > Confidentialité et sécurité > Service de localisation > active ton navigateur, puis autorise le site (icône à gauche de l'adresse)."+fin;
+  return "Position bloquée pour ce site : clique sur l'icône à gauche de l'adresse > Position > Autoriser, puis ↻. Sur Windows, vérifie aussi Paramètres > Confidentialité > Localisation."+fin;
+}
 function locate(silent){
   if(!("geolocation" in navigator)){
     locIP(silent,"Pas de GPS sur ce navigateur — position approximative par IP.");
@@ -2883,21 +3078,34 @@ function locate(silent){
     locIP(silent,"Site ouvert en HTTP : le navigateur bloque le GPS (il faut du HTTPS, ex. GitHub Pages). Position approchée par IP.");
     return;
   }
-  var MSG_DENIED="GPS bloqué pour ce site. Sur Chrome Android : menu ⋮ > Paramètres > Paramètres des sites > Position > autorise ce site. Vérifie aussi que la localisation Android est activée pour Chrome. Position approchée par IP en attendant.";
+  var MSG_DENIED=gpsDeniedMsg();
+  /* un seul aboutissement : certains navigateurs (voitures, vieux WebView) n'appellent jamais le rappel GPS */
+  var settled=false;
+  var once=function(fn){return function(a){if(settled)return;settled=true;clearTimeout(wd);fn(a);};};
+  var wd=null;
   var go=function(){
     if(!silent)show("#loading");
-    navigator.geolocation.getCurrentPosition(function(pos){onPos(pos,silent);},function(err){
-      if(err&&err.code===1){locIP(silent,MSG_DENIED);return;}
-      navigator.geolocation.getCurrentPosition(function(pos){onPos(pos,silent);},function(){
-        locIP(silent,"Signal GPS introuvable — position approchée par IP.");
-      },{enableHighAccuracy:false,timeout:10000,maximumAge:600000});
-    },{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
+    wd=setTimeout(once(function(){locIP(silent,"GPS sans réponse — position approchée par IP. Tu peux choisir ton spot avec la pastille en haut.");}),32000);
+    var okPos=once(function(pos){onPos(pos,silent);});
+    try{
+      navigator.geolocation.getCurrentPosition(okPos,function(err){
+        if(settled)return;
+        if(err&&err.code===1){once(function(){locIP(silent,MSG_DENIED);})();return;}
+        try{
+          navigator.geolocation.getCurrentPosition(okPos,once(function(){
+            locIP(silent,"Signal GPS introuvable — position approchée par IP.");
+          }),{enableHighAccuracy:false,timeout:10000,maximumAge:600000});
+        }catch(e2){once(function(){locIP(silent,"GPS indisponible — position approchée par IP.");})();}
+      },{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
+    }catch(e){once(function(){locIP(silent,"GPS indisponible — position approchée par IP.");})();}
   };
-  if(navigator.permissions&&navigator.permissions.query){
-    navigator.permissions.query({name:"geolocation"}).then(function(st){
-      if(st.state==="denied"){locIP(silent,MSG_DENIED);}
+  var q=null;
+  try{if(navigator.permissions&&navigator.permissions.query)q=navigator.permissions.query({name:"geolocation"});}catch(e){q=null;}
+  if(q&&q.then){
+    q.then(function(st){
+      if(st&&st.state==="denied"){locIP(silent,MSG_DENIED);}
       else go();
-    }).catch(go);
+    },go);
   }else go();
 }
 
@@ -2923,8 +3131,206 @@ function doSearch(q){
     }).catch(function(){});
 }
 
+/* ---------- v52 : mise en page adaptative ---------- */
+var LAYOUT={cols:false, order:null, L:null, R:null, box:null};
+var COL_R=["condCard","radarCard","droneWinCard","droneZoneCard","eclCard","shareCard"];
+function layoutInit(){
+  var app=$("#app");if(!app)return;
+  var secs=[], kids=app.children;
+  for(var i=0;i<kids.length;i++){var k=kids[i];if(k.tagName!=="FOOTER")secs.push(k);}
+  LAYOUT.order=secs;
+  var box=document.createElement("div");box.className="cols";box.style.display="none";
+  var L=document.createElement("div");L.className="col";var R=document.createElement("div");R.className="col";
+  box.appendChild(L);box.appendChild(R);
+  var ft=app.querySelector("footer");
+  app.insertBefore(box,ft||null);
+  LAYOUT.box=box;LAYOUT.L=L;LAYOUT.R=R;
+  layoutApply();
+  var rt=null;
+  window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(layoutApply,180);});
+  window.addEventListener("orientationchange",function(){setTimeout(layoutApply,300);});
+}
+function layoutApply(){
+  if(!LAYOUT.order||MINI)return;
+  var w=window.innerWidth||document.documentElement.clientWidth||0;
+  var want=w>=(CARON?760:980);
+  var h=document.documentElement;
+  h.className=h.className.replace(/\s*\bwide\b/g,"")+(want?" wide":"");
+  if(want===LAYOUT.cols)return;
+  LAYOUT.cols=want;
+  var app=$("#app"), ft=app.querySelector("footer"), o=LAYOUT.order, i;
+  if(want){
+    for(i=0;i<o.length;i++){if(COL_R.indexOf(o[i].id)<0)LAYOUT.L.appendChild(o[i]);}
+    for(i=0;i<COL_R.length;i++){var rs=document.getElementById(COL_R[i]);if(rs)LAYOUT.R.appendChild(rs);}
+    LAYOUT.box.style.display="";
+  }else{
+    for(i=0;i<o.length;i++)app.insertBefore(o[i],LAYOUT.box);
+    LAYOUT.box.style.display="none";
+  }
+  setTimeout(function(){
+    if(radar.map)radar.map.invalidateSize();
+    if(gpz.map)gpz.map.invalidateSize();
+    if(M)renderDay();
+  },120);
+}
+function carLabel(){
+  var l=$("#carLbl");if(!l)return;
+  var st=CARPREF==="auto"?("automatique ("+(CARON?"activé":"désactivé")+")"):(CARPREF==="on"?"forcé":"désactivé");
+  l.textContent="Affichage voiture (gros boutons, sans photo ni boussole) : "+st;
+}
+function cycleCar(){
+  CARPREF=CARPREF==="auto"?"on":(CARPREF==="on"?"off":"auto");
+  try{localStorage.setItem("estran_car",CARPREF);}catch(e){}
+  CARON=(CARPREF==="on")||(CARPREF==="auto"&&PLAT.carua);
+  var h=document.documentElement;
+  var c=h.className.replace(/\s*\b(car|nocompass)\b/g,"");
+  if(CARON)c+=" car";
+  if(CARON||!PLAT.touch||!("DeviceOrientationEvent" in window))c+=" nocompass";
+  h.className=c.replace(/^\s+/,"");
+  if(CARON&&CMP.on)toggleCompass();
+  LAYOUT.cols=null;layoutApply();
+  carLabel();
+  toast("Affichage voiture : "+(CARON?"activé":"désactivé")+(CARPREF==="auto"?" (auto)":""));
+}
+/* ---------- v56 : raccourci / installation sur l'écran d'accueil ---------- */
+var INST={evt:null, done:false};
+function iconPNG(sz){
+  try{
+    var c=document.createElement("canvas");c.width=c.height=sz;
+    var g=c.getContext("2d");if(!g)return null;
+    var k=sz/64;
+    g.fillStyle="#081821";g.fillRect(0,0,sz,sz);
+    g.lineCap="round";
+    function wave(y,col,w,al){
+      g.globalAlpha=al;g.strokeStyle=col;g.lineWidth=w*k;g.beginPath();
+      g.moveTo(6*k,y*k);
+      g.bezierCurveTo(12*k,(y-6)*k,16*k,(y-6)*k,22*k,y*k);
+      g.bezierCurveTo(28*k,(y+6)*k,32*k,(y+6)*k,38*k,y*k);
+      g.bezierCurveTo(44*k,(y-6)*k,48*k,(y-6)*k,54*k,y*k);
+      g.stroke();g.globalAlpha=1;
+    }
+    wave(40,"#49C6D6",5,1);wave(52,"#E4D5B4",4,.75);
+    g.fillStyle="#E4D5B4";g.beginPath();g.arc(46*k,18*k,7*k,0,Math.PI*2);g.fill();
+    return c.toDataURL("image/png");
+  }catch(e){return null;}
+}
+function setupInstall(){
+  var base=String(location.href).split("?")[0].split("#")[0];
+  var i180=iconPNG(180), i192=iconPNG(192), i512=iconPNG(512);
+  /* iOS n'accepte pas d'icône SVG pour l'écran d'accueil : on fournit un PNG généré */
+  var ti=document.getElementById("touchIcon");if(ti&&i180)ti.setAttribute("href",i180);
+  if(/^https?:/.test(base)&&i192&&i512&&!document.querySelector("link[rel=manifest]")){
+    var man={name:"Estran — marées, surf, pêche & drone",short_name:"Estran",start_url:base,scope:base,id:base,
+      display:"standalone",background_color:"#081821",theme_color:"#081821",lang:"fr",
+      icons:[{src:i192,sizes:"192x192",type:"image/png",purpose:"any"},{src:i512,sizes:"512x512",type:"image/png",purpose:"any maskable"}]};
+    var l=document.createElement("link");l.rel="manifest";
+    l.href="data:application/manifest+json;charset=utf-8,"+encodeURIComponent(JSON.stringify(man));
+    document.head.appendChild(l);
+  }
+  window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();INST.evt=e;});
+  window.addEventListener("appinstalled",function(){INST.evt=null;INST.done=true;toast("Estran est ajouté : son icône est sur ton écran d'accueil");var h=$("#instHelp");if(h)h.style.display="none";});
+}
+function isStandalone(){
+  try{if(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)return true;}catch(e){}
+  return navigator.standalone===true;
+}
+var PUBLIC_URL="https://aqualio-png.github.io/estran/";
+/* adresse à mettre dans un raccourci : toujours la version en ligne (jamais le fichier local file://) */
+function shortcutURL(){
+  var u=String(location.href).split("?")[0].split("#")[0];
+  return /^https:/.test(u)?u:PUBLIC_URL;
+}
+/* lanceur HTML : les navigateurs (Edge/SmartScreen) ne bloquent pas un .html, contrairement à un .url */
+function dlShortcut(){
+  var url=shortcutURL();
+  var ic=iconPNG(64)||"";
+  var txt='<!DOCTYPE html>\n<html lang="fr"><head><meta charset="UTF-8">\n<title>Estran</title>\n'
+    +(ic?'<link rel="icon" href="'+ic+'">\n':'')
+    +'<meta http-equiv="refresh" content="0; url='+url+'">\n'
+    +'<script>location.replace('+JSON.stringify(url)+');<\/script>\n'
+    +'</head><body style="background:#081821;color:#EAF4F4;font-family:sans-serif;text-align:center;padding:40px">'
+    +'Ouverture d\'Estran… <a style="color:#49C6D6" href="'+url+'">'+url+'</a></body></html>\n';
+  try{
+    var b=new Blob([txt],{type:"text/html;charset=utf-8"});var a=document.createElement("a");
+    a.href=URL.createObjectURL(b);a.download="Estran.html";document.body.appendChild(a);a.click();
+    setTimeout(function(){try{URL.revokeObjectURL(a.href);document.body.removeChild(a);}catch(e){}},1500);
+    toast("« Estran.html » téléchargé : déplace-le sur ton bureau, un double-clic ouvre Estran en ligne");
+  }catch(e){toast("Téléchargement impossible sur ce navigateur");}
+}
+function localNote(){
+  if(/^https:/.test(String(location.href)))return "";
+  return "<p style='margin-top:8px;color:var(--peche)'>Tu utilises une copie locale du fichier : l'installation Chrome/Edge ne marche qu'avec la version en ligne ("+PUBLIC_URL+"). Le raccourci téléchargé ouvre cette version en ligne.</p>";
+}
+function installHelpHTML(){
+  var h="";
+  if(PLAT.tesla||CARON){
+    h="<b>Navigateur de voiture</b> : il n'a pas d'écran d'accueil pour les sites web. Le plus pratique :<ol>"
+     +"<li>Touche l'étoile ☆ à droite de la barre d'adresse pour mettre Estran en <b>favori</b>.</li>"
+     +"<li>Ensuite, ouvre le navigateur : Estran est dans les favoris, en un geste.</li></ol>"
+     +"Astuce : active « 📌 Démarrer sur ce spot » (touche le nom du spot en haut) si la voiture ne donne pas sa position.";
+  }else if(PLAT.ios){
+    var saf=PLAT.safari;
+    h="<b>iPhone / iPad</b>"+(saf?"":" — ouvre d'abord cette page dans <b>Safari</b> (ou utilise le bouton Partager de ton navigateur)")+" :<ol>"
+     +"<li>Touche le bouton <b>Partager</b> (carré avec une flèche ⬆︎), en bas ou en haut de Safari.</li>"
+     +"<li>Fais défiler et choisis <b>« Sur l'écran d'accueil »</b>.</li>"
+     +"<li>Laisse le nom « Estran » et touche <b>Ajouter</b>.</li></ol>";
+  }else if(PLAT.android){
+    h="<b>Android</b> :<ol>"
+     +"<li>Ouvre le menu <b>⋮</b> du navigateur (en haut à droite dans Chrome, en bas dans Samsung Internet ☰).</li>"
+     +"<li>Choisis <b>« Ajouter à l'écran d'accueil »</b> ou <b>« Installer l'application »</b>.</li>"
+     +"<li>Confirme : l'icône Estran apparaît sur ton écran d'accueil.</li></ol>";
+  }else if(PLAT.mac){
+    h="<b>Mac</b> :<ol>"
+     +"<li>Safari : menu <b>Fichier → Ajouter au Dock</b>.</li>"
+     +"<li>Chrome / Edge : icône d'installation ⊕ à droite de la barre d'adresse, ou menu ⋮ → <b>Caster, enregistrer et partager → Installer la page en tant qu'appli</b>.</li>"
+     +"<li>Page d'accueil de Chrome : nouvel onglet → <b>« + Ajouter un raccourci »</b>, colle l'adresse.</li></ol>"
+     +"<button type='button' class='ihdl' data-dl='1'>⬇ Télécharger un raccourci pour le bureau</button>"+localNote();
+  }else{
+    h="<b>PC</b> :<ol>"
+     +"<li>Edge (le plus simple, crée une vraie icône sur le bureau) : menu <b>⋯ → Applications → Installer ce site en tant qu'application</b>, puis coche « Créer un raccourci sur le Bureau ».</li>"
+     +"<li>Chrome : icône d'installation ⊕ à droite de la barre d'adresse, ou menu ⋮ → <b>Caster, enregistrer et partager → Installer la page en tant qu'appli</b>.</li>"
+     +"<li>Page d'accueil de Chrome : nouvel onglet → <b>« + Ajouter un raccourci »</b>, nom « Estran », colle l'adresse.</li>"
+     +"<li>Firefox : fais glisser le cadenas de la barre d'adresse sur le bureau.</li></ol>"
+     +"<button type='button' class='ihdl' data-dl='1'>⬇ Télécharger un raccourci pour le bureau</button>"+localNote();
+  }
+  return h;
+}
+function onInstallClick(){
+  if(isStandalone()){toast("Estran est déjà ouvert depuis son icône 👍");return;}
+  if(INST.evt){
+    var ev=INST.evt;INST.evt=null;
+    try{
+      ev.prompt();
+      if(ev.userChoice&&ev.userChoice.then)ev.userChoice.then(function(r){
+        if(r&&r.outcome==="accepted")toast("Icône Estran ajoutée");
+        else toast("Ajout annulé — tu peux recommencer quand tu veux");
+      });
+      return;
+    }catch(e){}
+  }
+  var p=$("#instHelp");if(!p)return;
+  if(p.style.display!=="none"){p.style.display="none";return;}
+  p.innerHTML=installHelpHTML();p.style.display="block";
+}
+function homeHintSetup(){
+  var el=$("#homeHow");if(!el)return;
+  if(PLAT.ios)el.textContent="dans Safari : bouton Partager ⎋ → « Sur l'écran d'accueil »";
+  else if(PLAT.android)el.textContent="dans le navigateur : menu ⋮ → « Ajouter à l'écran d'accueil »";
+  else el.textContent="ajoute-le à tes favoris (Ctrl+D, ou ⌘+D sur Mac) ou épingle l'onglet";
+}
+function tagSections(){
+  var map={"#winDrone":"droneWinCard","#droneZone":"droneZoneCard","#condGrid":"condCard","#radarMap":"radarCard","#eclList":"eclCard","#btnShare":"shareCard","#winPeche":"pecheCard"};
+  for(var sel in map){if(!map.hasOwnProperty(sel))continue;
+    var n=$(sel);while(n&&n.tagName!=="SECTION")n=n.parentNode;if(n&&!n.id)n.id=map[sel];}
+}
+
 /* ---------- init ---------- */
 function init(){
+  tagSections();
+  setupInstall();
+  homeHintSetup();
+  carLabel();
+  if($("#btnCar"))$("#btnCar").addEventListener("click",cycleCar);
   $("#btnGps").addEventListener("click",function(){locate(false);});
   $("#radPlay").addEventListener("click",radarToggle);
   $("#btnCal").addEventListener("click",function(){
@@ -2953,7 +3359,7 @@ function init(){
     if(radar.map)radarLoad();
     if(state.la!=null)fetchAll(state.la,state.lo,state.label,false);else locate(false);
   });
-  var openModal=function(){renderFavs();$("#modal").classList.add("open");$("#q").focus();};
+  var openModal=function(){renderFavs();renderHomeBtn();$("#modal").classList.add("open");$("#q").focus();};
   $("#locPill").addEventListener("click",openModal);
   $("#btnManual").addEventListener("click",openModal);
   $("#btnClose").addEventListener("click",function(){$("#modal").classList.remove("open");});
@@ -2971,6 +3377,7 @@ function init(){
     if(mv)mv.style.display="block";
     if(fv)fv.style.display="none";
   }
+  if(!MINI)layoutInit();
   var th="night";
   try{th=localStorage.getItem("estran_theme")||"night";}catch(e){}
   applyTheme(th,true);
@@ -3006,7 +3413,7 @@ function init(){
   if(_dalt)_dalt.addEventListener("click",function(e){
     var t=e.target;
     while(t&&t!==_dalt){
-      if(t.id==="cmpBtn"||t.id==="roseEl"){toggleCompass();return;}
+      if(t.id==="cmpBtn"||t.id==="roseEl"){if(document.documentElement.className.indexOf("nocompass")<0)toggleCompass();return;}
       var da=t.getAttribute?t.getAttribute("data-alt"):null;
       if(da){var a=parseInt(da,10);if(DALTS.indexOf(a)>=0){DALT=a;try{localStorage.setItem("estran_dalt",String(a));}catch(err){}renderDroneAlt();}return;}
       t=t.parentNode;
@@ -3028,14 +3435,20 @@ function init(){
     }
   });
   $("#btnCopy").addEventListener("click",copyUrl);
+  if($("#btnInstall"))$("#btnInstall").addEventListener("click",onInstallClick);
+  if($("#instHelp"))$("#instHelp").addEventListener("click",function(e){
+    var t=e.target;var k=t&&t.getAttribute&&t.getAttribute("data-dl");if(k)dlShortcut(k);
+  });
   $("#btnMini").addEventListener("click",function(){
     location.href=String(location.href).split("?")[0].split("#")[0]+"?mini=1";
   });
   $("#btnFav").addEventListener("click",addFav);
+  if($("#btnHome"))$("#btnHome").addEventListener("click",toggleHome);
+  var HOME=getHome();
   renderFavs();
   window.addEventListener("online",function(){
     toast("Connexion rétablie — actualisation");
-    if(state.la!=null)fetchAll(state.la,state.lo,state.label,true);else locate(true);
+    if(state.la!=null)fetchAll(state.la,state.lo,state.label,true);else{var hm=getHome();if(hm)fetchAll(hm.la,hm.lo,hm.n,true);else locate(true);}
   });
   window.addEventListener("offline",renderAge);
   checkUpdate();
@@ -3046,6 +3459,9 @@ function init(){
     if(radar.map&&!radar.timer)radarLoad();
     if(state.la!=null&&state.at&&(Date.now()-state.at)>20*60000)
       fetchAll(state.la,state.lo,state.label,"auto");
+  });
+  window.addEventListener("pageshow",function(e){
+    if(e&&e.persisted&&state.la!=null&&state.at&&(Date.now()-state.at)>20*60000)fetchAll(state.la,state.lo,state.label,"auto");
   });
   setInterval(function(){if(M&&DAY===0)renderDay();},60000);
   setInterval(refreshCurrent,600000);
@@ -3060,7 +3476,10 @@ function init(){
     $("#locName").textContent=c.label||"Dernier spot";
     processAll();
     renderAge();
-    locate(true);
+    if(HOME){if(Math.abs(HOME.la-c.la)>1e-4||Math.abs(HOME.lo-c.lo)>1e-4)fetchAll(HOME.la,HOME.lo,HOME.n,false);else fetchAll(HOME.la,HOME.lo,HOME.n,"auto");}
+    else locate(true);
+  }else if(HOME){
+    fetchAll(HOME.la,HOME.lo,HOME.n,false);
   }else{
     locate(false);
   }
