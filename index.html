@@ -74,6 +74,12 @@ header{
 .locpill .name{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600}
 .locpill .dot{width:8px; height:8px; border-radius:50%; background:var(--surf); flex:none; box-shadow:0 0 8px var(--surf)}
 .locpill .dot.approx{background:var(--peche); box-shadow:0 0 8px var(--peche)}
+.iconbtn.tracking{background:var(--badgeBg); color:var(--badgeFg); border-color:var(--badgeBg); animation:trackpulse 2s ease-in-out infinite}
+@keyframes trackpulse{0%,100%{opacity:1}50%{opacity:.6}}
+.trackbar{
+  background:rgba(91,168,201,.14); border:1px solid rgba(91,168,201,.45); color:#7FC4DE;
+  border-radius:10px; padding:8px 12px; font-size:12.5px; font-weight:600; margin-bottom:10px; text-align:center;
+}
 .agebar{
   background:rgba(231,169,78,.14); border:1px solid rgba(231,169,78,.45); color:var(--peche);
   border-radius:10px; padding:8px 12px; font-size:12.5px; font-weight:600; margin-bottom:10px; text-align:center;
@@ -166,7 +172,7 @@ body.land .hero{padding-top:10px}
   padding:10px 14px; font-size:13px; font-weight:600; margin-top:12px; text-align:center;
 }
 .iconbtn{
-  flex:none; width:38px; height:38px; border-radius:50%;
+  flex:none; width:36px; height:36px; border-radius:50%;
   background:var(--panel2); border:1px solid var(--line); color:var(--foam);
   font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center;
 }
@@ -605,7 +611,7 @@ html.car #modal.kbd #results{max-height:30vh}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v66</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v67</b></p>
     </div>
   </header>
 
@@ -615,10 +621,12 @@ html.car #modal.kbd #results{max-height:30vh}
     </div>
     <button class="iconbtn" id="btnTheme" title="Thème : nuit / jour / plein soleil">🌙</button>
     <button class="iconbtn" id="btnCam" title="Webcam du spot (Viewsurf)">🎥</button>
+    <button class="iconbtn" id="btnTrack" title="Suivi en déplacement (voiture, vélo)">🚗</button>
     <button class="iconbtn" id="btnGps" title="Ma position GPS">◎</button>
     <button class="iconbtn" id="btnRefresh" title="Actualiser">↻</button>
   </div>
 
+  <div class="trackbar" id="trackBar" style="display:none"></div>
   <div class="agebar" id="ageBar" style="display:none"></div>
   <div class="landbar" id="landBar" style="display:none"></div>
 
@@ -788,7 +796,7 @@ html.car #modal.kbd #results{max-height:30vh}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v66</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v67</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -1240,6 +1248,20 @@ function navRules(mode,lengthM,cv){
   return r;
 }
 /* Hub Eau Hydrometrie v2 : hauteur H en mm, debit Q en L/s (referentiel officiel de l Etat) */
+/* Suivi en deplacement : on ne recharge les donnees que si l on a vraiment change de secteur,
+   avec un delai minimum entre deux rechargements (economie de batterie et de requetes). */
+function trackAccept(acc){
+  if(acc==null)return true;
+  return acc<=500;                    /* au-dela, le point est trop flou pour etre exploite */
+}
+function shouldRefetch(last,now,lastFetchMs,nowMs,minKm,minMs){
+  if(!now)return false;
+  if(!last)return true;
+  var d=distKm(last.la,last.lo,now.la,now.lo);
+  if(d<(minKm||4))return false;
+  if(lastFetchMs&&(nowMs-lastFetchMs)<(minMs||180000))return false;
+  return true;
+}
 function hydroMeters(v){
   if(v==null||isNaN(v))return null;
   return (Math.abs(v)>50)?v/1000:v;   /* mm -> m ; valeurs deja en m laissees telles quelles */
@@ -3684,6 +3706,72 @@ function onPos(pos,silent){
   fetchAll(la,lo,null,silent);
   reverseLabel(la,lo);
 }
+var TRACK={on:false,id:null,ref:null,fetchPt:null,lastFetch:0,since:0,moved:0};
+function trackBar(){
+  var el=$("#trackBar");if(!el)return;
+  if(!TRACK.on){el.style.display="none";return;}
+  el.style.display="block";
+  var d=TRACK.moved?(" · "+frNum(TRACK.moved,1)+" km parcourus"):"";
+  var a=(state.acc!=null)?(" · ± "+Math.round(state.acc)+" m"):"";
+  el.textContent="🚗 Suivi en déplacement actif"+d+a+" — les données se rechargent tous les 4 km.";
+}
+function trackApply(pos){
+  if(!pos||!pos.coords)return;
+  var acc=pos.coords.accuracy;
+  if(!trackAccept(acc))return;
+  var la=Math.round(pos.coords.latitude*10000)/10000;
+  var lo=Math.round(pos.coords.longitude*10000)/10000;
+  var pt={la:la,lo:lo};
+  if(TRACK.ref)TRACK.moved+=distKm(TRACK.ref.la,TRACK.ref.lo,la,lo);
+  var need=shouldRefetch(TRACK.fetchPt,pt,TRACK.lastFetch,Date.now(),4,180000);
+  state.la=la;state.lo=lo;state.acc=(typeof acc==="number"?acc:null);
+  TRACK.ref=pt;
+  trackBar();
+  try{
+    if(typeof renderNav==="function")renderNav();
+    if(typeof renderNavMap==="function")renderNavMap();
+    if(MINI&&!MINIFOCUS&&typeof renderMini==="function")renderMini();
+  }catch(e){}
+  if(need){
+    TRACK.lastFetch=Date.now();
+    TRACK.fetchPt=pt;
+    if(typeof HYDRO!=="undefined"){HYDRO.key=null;HYDRO.at=0;}
+    fetchAll(la,lo,null,"auto");
+    reverseLabel(la,lo);
+  }
+  if(TRACK.since&&(Date.now()-TRACK.since)>2*3600000)trackStop("Suivi arrêté après 2 h (batterie).");
+}
+function trackStart(){
+  if(TRACK.on)return;
+  if(!("geolocation" in navigator)||!navigator.geolocation.watchPosition){
+    toast("Suivi impossible : pas de géolocalisation sur ce navigateur.");return;
+  }
+  if(!window.isSecureContext){
+    toast("Suivi impossible hors HTTPS.");return;
+  }
+  try{
+    TRACK.id=navigator.geolocation.watchPosition(trackApply,function(err){
+      if(err&&err.code===1)trackStop("Suivi arrêté : localisation refusée.");
+    },{enableHighAccuracy:true,maximumAge:5000,timeout:30000});
+  }catch(e){toast("Suivi impossible sur ce navigateur.");return;}
+  TRACK.on=true;TRACK.since=Date.now();TRACK.moved=0;
+  TRACK.ref=(state.la!=null)?{la:state.la,lo:state.lo}:null;
+  TRACK.fetchPt=TRACK.ref;
+  TRACK.lastFetch=state.at||0;
+  var b=$("#btnTrack");if(b){b.className="iconbtn tracking";b.title="Suivi actif — toucher pour arrêter";}
+  trackBar();
+  toast("Suivi en déplacement activé : la position suit ton trajet, les données se rechargent tous les 4 km.");
+}
+function trackStop(msg){
+  if(TRACK.id!=null){try{navigator.geolocation.clearWatch(TRACK.id);}catch(e){}}
+  TRACK.on=false;TRACK.id=null;
+  var b=$("#btnTrack");if(b){b.className="iconbtn";b.title="Suivi en déplacement (voiture, vélo)";}
+  trackBar();
+  if(msg)toast(msg);
+}
+function trackToggle(){
+  if(TRACK.on)trackStop("Suivi arrêté.");else trackStart();
+}
 function locatePrecise(){
   if(!("geolocation" in navigator)||!navigator.geolocation.watchPosition){locate(false);return;}
   if(!window.isSecureContext){locate(false);return;}
@@ -4013,6 +4101,7 @@ function init(){
   carLabel();
   if($("#btnCar"))$("#btnCar").addEventListener("click",cycleCar);
   $("#btnGps").addEventListener("click",function(){locatePrecise();});
+  if($("#btnTrack"))$("#btnTrack").addEventListener("click",trackToggle);
   $("#radPlay").addEventListener("click",radarToggle);
   $("#btnCal").addEventListener("click",function(){
     var pn=$("#calPanel");
@@ -4170,7 +4259,16 @@ function init(){
   window.addEventListener("offline",renderAge);
   checkUpdate();
   document.addEventListener("visibilitychange",function(){
-    if(document.hidden)return;
+    if(document.hidden){
+      if(TRACK.on&&TRACK.id!=null){try{navigator.geolocation.clearWatch(TRACK.id);}catch(e){}TRACK.id=null;}
+      return;
+    }
+    if(TRACK.on&&TRACK.id==null){
+      try{
+        TRACK.id=navigator.geolocation.watchPosition(trackApply,function(){},
+          {enableHighAccuracy:true,maximumAge:5000,timeout:30000});
+      }catch(e){}
+    }
     checkUpdate();
     refreshCurrent();
     if(radar.map&&!radar.timer)radarLoad();
