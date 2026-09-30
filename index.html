@@ -65,11 +65,17 @@ header{
 }
 .brand h1 span{color:var(--surf)}
 .brand p{color:var(--mist); font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; margin-top:3px}
-.locbar{display:flex; gap:8px; align-items:center; margin:6px 0 14px}
+.locbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:6px 0 14px}
 .locpill{
-  flex:1; display:flex; align-items:center; gap:8px;
+  flex:1 1 100%; display:flex; align-items:center; gap:9px;
   background:var(--panel); border:1px solid var(--line); border-radius:999px;
-  padding:9px 14px; color:var(--foam); font-size:14px; min-width:0; cursor:pointer;
+  padding:13px 18px; color:var(--foam); font-size:16px; font-weight:600;
+  min-width:0; min-height:50px; cursor:pointer;
+}
+.locbar .iconbtn{flex:1 1 0; width:auto; min-width:0; height:46px; border-radius:14px; font-size:19px}
+@media (min-width:620px){
+  .locpill{flex:1 1 auto}
+  .locbar .iconbtn{flex:0 0 auto; width:46px}
 }
 .locpill .name{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600}
 .locpill .dot{width:8px; height:8px; border-radius:50%; background:var(--surf); flex:none; box-shadow:0 0 8px var(--surf)}
@@ -621,6 +627,13 @@ html.car #modal,html.car.wide #modal{padding:14px 16px 10px; align-items:flex-st
 html.car #modal.kbd #mextra,html.car #modal.kbd #btnClose{display:none}
 html.car #modal.kbd #results{max-height:30vh}
 .mapko{padding:30px 14px; text-align:center; color:var(--mist); font-size:13px}
+.card,.hero{animation:cardIn .32s ease-out both}
+@keyframes cardIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.curve path.draw{stroke-dasharray:1400; stroke-dashoffset:1400; animation:drawCurve .9s ease-out forwards}
+@keyframes drawCurve{to{stroke-dashoffset:0}}
+.homegrid button,.mact button,.cmp,.tab{transition:transform .12s ease, background .18s ease}
+.homegrid button:active,.mact button:active,.cmp:active{transform:scale(.96)}
+.trk .seg{transition:left .4s ease, width .4s ease}
 @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
 </style>
 </head>
@@ -631,7 +644,7 @@ html.car #modal.kbd #results{max-height:30vh}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v72</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v73</b></p>
     </div>
   </header>
 
@@ -816,7 +829,7 @@ html.car #modal.kbd #results{max-height:30vh}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v72</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v73</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -1751,7 +1764,11 @@ function renderCurve(i0){
   s+="<stop offset='0' stop-color='"+TC.grad+"' stop-opacity='0.28'/>";
   s+="<stop offset='1' stop-color='"+TC.grad+"' stop-opacity='0.02'/></linearGradient></defs>";
   s+="<path d='"+area+"' fill='url(#gW)'/>";
-  s+="<path d='"+path+"' fill='none' stroke='"+TC.curve+"' stroke-width='2.2' stroke-linecap='round'/>";
+  var ckey=DAY+"|"+(state.label||"")+"|"+(CAL&&CAL.on?"c":"");
+  var anim=(CURVEKEY!==ckey);
+  CURVEKEY=ckey;
+  s+="<path d='"+path+"' fill='none' stroke='"+TC.curve+"' stroke-width='2.2' stroke-linecap='round'"
+    +(anim?" class='draw'":"")+"/>";
   var dayStart=parseLocal(M.hourly.time[i0]);
   var dayEnd=new Date(dayStart.getTime()+86400000);
   for(var e=0;e<EXT.length;e++){
@@ -3273,7 +3290,7 @@ var HOME=[
   {id:"eclCard",   i:"🌒", l:"Éclipses"},
   {id:"shareCard", i:"🔗", l:"Partager"}
 ];
-var FOCUS=null, MINIFOCUS=false;
+var FOCUS=null, MINIFOCUS=false, CURVEKEY=null;
 function homeVal(id){
   try{
     if(!M)return "";
@@ -3313,7 +3330,7 @@ function renderHome(){
   var bs=g.querySelectorAll("button");
   for(var b=0;b<bs.length;b++){
     (function(el){
-      el.addEventListener("click",function(){focusCard(el.getAttribute("data-go"));});
+      el.addEventListener("click",function(){buzz(10);focusCard(el.getAttribute("data-go"));});
     })(bs[b]);
   }
 }
@@ -3883,6 +3900,21 @@ function trackApply(pos){
   }
   if(TRACK.since&&(Date.now()-TRACK.since)>2*3600000)trackStop("Suivi arrêté après 2 h (batterie).");
 }
+var WAKE=null;
+function wakeOn(){
+  try{
+    if(navigator.wakeLock&&navigator.wakeLock.request){
+      navigator.wakeLock.request("screen").then(function(w){WAKE=w;}).catch(function(){});
+    }
+  }catch(e){}
+}
+function wakeOff(){
+  try{if(WAKE&&WAKE.release){WAKE.release();}}catch(e){}
+  WAKE=null;
+}
+function buzz(ms){
+  try{if(navigator.vibrate)navigator.vibrate(ms||12);}catch(e){}
+}
 function trackStart(){
   if(TRACK.on)return;
   if(!("geolocation" in navigator)||!navigator.geolocation.watchPosition){
@@ -3900,6 +3932,7 @@ function trackStart(){
     },{enableHighAccuracy:true,maximumAge:2000,timeout:45000});
   }catch(e){toast("Suivi impossible sur ce navigateur.");return;}
   TRACK.on=true;TRACK.since=Date.now();TRACK.moved=0;TRACK.fixes=0;TRACK.skipped=0;TRACK.lastAcc=null;
+  wakeOn();buzz(18);
   setTimeout(function(){
     if(TRACK.on&&!TRACK.fixes)toast("Aucun point GPS reçu depuis 25 s : vérifie que la localisation du téléphone est activée et en mode haute précision.");
   },25000);
@@ -3911,6 +3944,7 @@ function trackStart(){
   toast("Suivi en déplacement activé : la position suit ton trajet, les données se rechargent tous les 4 km.");
 }
 function trackStop(msg){
+  wakeOff();
   if(TRACK.id!=null){try{navigator.geolocation.clearWatch(TRACK.id);}catch(e){}}
   TRACK.on=false;TRACK.id=null;
   var b=$("#btnTrack");if(b){b.className="iconbtn";b.title="Suivi en déplacement (voiture, vélo)";}
@@ -4414,6 +4448,7 @@ function init(){
       if(TRACK.on&&TRACK.id!=null){try{navigator.geolocation.clearWatch(TRACK.id);}catch(e){}TRACK.id=null;}
       return;
     }
+    if(TRACK.on)wakeOn();
     if(TRACK.on&&TRACK.id==null){
       try{
         TRACK.id=navigator.geolocation.watchPosition(trackApply,function(){},
