@@ -338,6 +338,7 @@ table.tides tr:first-child td{border-top:none}
 .malert.bad{background:rgba(224,108,91,.14); border:1px solid rgba(224,108,91,.45); color:var(--badText)}
 .malert.info{background:rgba(91,168,201,.14); border:1px solid rgba(91,168,201,.45); color:#7FC4DE}
 .mspot{cursor:pointer}
+.mspot .mqual{color:var(--mist); font-family:"Spline Sans Mono",monospace; font-size:11px; letter-spacing:0; text-transform:none}
 .mttl{color:var(--mist); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; margin:16px 0 7px}
 #miniView .homegrid{margin-bottom:10px}
 .homegrid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px}
@@ -629,7 +630,7 @@ html.car #modal.kbd #results{max-height:30vh}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v69</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v71</b></p>
     </div>
   </header>
 
@@ -814,7 +815,7 @@ html.car #modal.kbd #results{max-height:30vh}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v69</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v71</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -2769,7 +2770,10 @@ function updTries(){
 function setTries(n){
   try{if(n)sessionStorage.setItem("estran_upd",String(n));else sessionStorage.removeItem("estran_upd");}catch(e){}
 }
-function goFresh(base){location.replace(base+"?v="+Date.now());}
+function goFresh(base){
+  var mini=/[?&#]mini/.test(String(location.href));
+  location.replace(base+"?"+(mini?"mini=1&":"")+"v="+Date.now());
+}
 function checkUpdate(){
   var el=$("#appVer");
   var localVer=el?(el.textContent||"").trim():"";
@@ -2981,8 +2985,14 @@ function renderMini(){
   if(state.sst&&state.sst.v!=null)sst=state.sst.v;
   else if(M.hourly.sea_surface_temperature)sst=M.hourly.sea_surface_temperature[TODAY+12];
   var wl=c?wmoLabel(c.weather_code):null;
-  var h="<div class='mspot' id='miniSpot' title='Changer de spot'><span class='dot"+(approx?" approx":"")+"'></span>"
-    +(state.label||"Estran")+" ✎</div>";
+  var trkOn=(typeof TRACK!=="undefined"&&TRACK.on);
+  var flou=approx||(state.acc!=null&&state.acc>1000);
+  var qual="";
+  if(trkOn&&(typeof TRACK!=="undefined")&&!TRACK.fixes)qual=" · en attente du GPS…";
+  else if(state.acc!=null)qual=" · "+accLabel(state.acc);
+  else if(approx)qual=" · position approchée";
+  var h="<div class='mspot' id='miniSpot' title='Changer de spot'><span class='dot"+(flou?" approx":"")+"'></span>"
+    +(state.label||"Estran")+"<span class='mqual'>"+qual+"</span> ✎</div>";
   h+=miniAlerts();
   h+="<div class='mtide'><div><div class='big'>"+(nx?(nx.type==="PM"?"Pleine mer ":"Basse mer ")+fmtHM(nx.t):"—")+"</div>"
     +"<div class='sub'>"+(nx?"dans "+fmtDur(nx.t-now):"")+"</div></div>"
@@ -3542,7 +3552,7 @@ function renderDay(){
   renderIdLens();
   renderHome();
   if(FOCUS)setCardsVisible(FOCUS);
-  if(MINI&&!MINIFOCUS)renderMini();
+  if(MINI&&!MINIFOCUS){try{renderMini();}catch(e){}}
 }
 
 /* ---------- data pipeline ---------- */
@@ -3571,6 +3581,11 @@ function processAll(){
   }
   DAY=0;
   applyMode();
+  if(MINI&&!MINIFOCUS){
+    var mvv=$("#miniView"), fvv=$("#fullView");
+    if(mvv)mvv.style.display="block";
+    if(fvv)fvv.style.display="none";
+  }
   var dotEl=document.querySelector("#locPill .dot");
   if(dotEl){
     if(isApproxSpot())dotEl.classList.add("approx");
