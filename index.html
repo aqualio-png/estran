@@ -358,7 +358,21 @@ table.tides tr:first-child td{border-top:none}
   border-radius:14px; padding:11px 6px 9px; font-family:inherit; cursor:pointer;
   display:flex; flex-direction:column; align-items:center; gap:5px; line-height:1.15;
 }
-.homegrid button .hi{font-size:21px}
+.homegrid button .hi{font-size:21px; display:inline-block; will-change:transform}
+.fx-spin{animation:fxSpin .8s ease-in-out}
+@keyframes fxSpin{0%{transform:rotate(0) scale(1)}35%{transform:rotate(180deg) scale(1.18)}100%{transform:rotate(360deg) scale(1)}}
+.fx-wave{animation:fxWave .8s ease-in-out}
+@keyframes fxWave{0%,100%{transform:translateX(0) rotate(0)}25%{transform:translateX(-4px) rotate(-9deg)}60%{transform:translateX(4px) rotate(9deg)}}
+.fx-bob{animation:fxBob .8s ease-in-out}
+@keyframes fxBob{0%,100%{transform:translateY(0)}30%{transform:translateY(-7px) rotate(-8deg)}65%{transform:translateY(3px) rotate(5deg)}}
+.fx-drop{animation:fxDrop .8s ease-in}
+@keyframes fxDrop{0%{transform:translateY(-6px);opacity:.5}45%{transform:translateY(4px);opacity:1}100%{transform:translateY(0)}}
+.fx-sway{animation:fxSway .8s ease-in-out}
+@keyframes fxSway{0%,100%{transform:rotate(0)}30%{transform:rotate(-14deg)}65%{transform:rotate(12deg)}}
+.fx-pulse{animation:fxPulse .7s ease-out}
+@keyframes fxPulse{0%{transform:scale(1)}40%{transform:scale(1.28)}100%{transform:scale(1)}}
+.fx-flash{animation:fxFlash .6s ease-out}
+@keyframes fxFlash{0%{filter:brightness(1)}20%{filter:brightness(2.4)}100%{filter:brightness(1)}}
 .homegrid button .hl{font-size:11px; font-weight:600; text-align:center}
 .homegrid button .hv{font-size:10px; color:var(--mist); font-family:"Spline Sans Mono",monospace}
 .homegrid button:active{transform:scale(.97)}
@@ -648,7 +662,7 @@ html.car #modal.kbd #results{max-height:30vh}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v74</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v75</b></p>
     </div>
   </header>
 
@@ -658,6 +672,7 @@ html.car #modal.kbd #results{max-height:30vh}
     </div>
     <button class="iconbtn" id="btnTheme" title="Thème : nuit / jour / plein soleil">🌙</button>
     <button class="iconbtn" id="btnCam" title="Webcam du spot (Viewsurf)">🎥</button>
+    <button class="iconbtn" id="btnSnd" title="Sons">🔊</button>
     <button class="iconbtn" id="btnTrack" title="Suivi en déplacement (voiture, vélo)">🚗</button>
     <button class="iconbtn" id="btnGps" title="Ma position GPS">◎</button>
     <button class="iconbtn" id="btnRefresh" title="Actualiser">↻</button>
@@ -842,7 +857,7 @@ html.car #modal.kbd #results{max-height:30vh}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v74</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v75</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -1368,6 +1383,18 @@ function pickHydroStation(list,la,lo){
       river:st.libelle_cours_eau||"",dist:d,la:sla,lo:slo};}
   }
   return best;
+}
+function soundFor(id){
+  var map={__mini:"blip", tideCard:"vague", surfCard:"vague", pecheCard:"plouf",
+    droneCard:"drone", dzoneCard:"drone", navCard:"cloche", condCard:"blip",
+    radarCard:"pluie", identSection:"photo", eclCard:"eclat", shareCard:"blip"};
+  return map[id]||"blip";
+}
+function animFor(id){
+  var map={tideCard:"wave", surfCard:"wave", pecheCard:"bob", droneCard:"spin", dzoneCard:"spin",
+    navCard:"sway", radarCard:"drop", condCard:"pulse", identSection:"flash",
+    eclCard:"pulse", __mini:"pulse", shareCard:"pulse"};
+  return map[id]||"pulse";
 }
 function gridPoints(la,lo,step,n){
   var out=[],i,j,half=(n-1)/2;
@@ -2535,6 +2562,7 @@ function renderStorm(i0){
   if(DAY===0&&cur&&cur.weather_code!=null&&cur.weather_code>=95){
     el.style.display="block";
     el.textContent="⚠️ Orage en cours — surf, pêche et drone : tout le monde au sec.";
+    if(STORMSND!==isoDate(now)){STORMSND=isoDate(now);playSound("foudre");}
     return;
   }
   var first=null;
@@ -3139,7 +3167,8 @@ function renderMiniAct(){
      "<button id='mGps'>◎<span class='lb'>Position</span></button>"
     +"<button id='mTrack' class='"+(trk?"on":"")+"'>🚗<span class='lb'>"+(trk?"Suivi actif":"Suivi")+"</span></button>"
     +"<button id='mRef'>↻<span class='lb'>Actualiser</span></button>"
-    +"<button id='mTheme'>"+(THEME_ICON[THEME]||"🌙")+"<span class='lb'>Thème</span></button>";
+    +"<button id='mTheme'>"+(THEME_ICON[THEME]||"🌙")+"<span class='lb'>Thème</span></button>"
+    +"<button id='mSnd'>"+(SND.on?"🔊":"🔇")+"<span class='lb'>Sons</span></button>";
   var g=$("#mGps");if(g)g.addEventListener("click",function(){locatePrecise();});
   var t=$("#mTrack");if(t)t.addEventListener("click",function(){trackToggle();renderMini();});
   var r=$("#mRef");
@@ -3148,6 +3177,7 @@ function renderMiniAct(){
     if(state.la!=null)fetchAll(state.la,state.lo,state.label,false);else locate(false);
   });
   var th=$("#mTheme");if(th)th.addEventListener("click",function(){cycleTheme();renderMini();});
+  var ms=$("#mSnd");if(ms)ms.addEventListener("click",soundToggle);
   var fu=$("#mFull");
   if(fu)fu.addEventListener("click",function(){setMiniMode(false);});
   var sp=$("#miniSpot");
@@ -3173,7 +3203,11 @@ function renderMiniGrid(){
   var bs=g.querySelectorAll("button");
   for(var b=0;b<bs.length;b++){
     (function(elb){
-      elb.addEventListener("click",function(){miniOpenCard(elb.getAttribute("data-go"));});
+      elb.addEventListener("click",function(){
+        var go=elb.getAttribute("data-go");
+        tileFx(elb,go);
+        setTimeout(function(){miniOpenCard(go);},120);
+      });
     })(bs[b]);
   }
 }
@@ -3340,7 +3374,7 @@ var HOME=[
   {id:"eclCard",   i:"🌒", l:"Éclipses"},
   {id:"shareCard", i:"🔗", l:"Partager"}
 ];
-var FOCUS=null, MINIFOCUS=false, CURVEKEY=null;
+var FOCUS=null, MINIFOCUS=false, CURVEKEY=null, STORMSND=null;
 function homeVal(id){
   try{
     if(!M)return "";
@@ -3384,10 +3418,10 @@ function renderHome(){
   for(var b=0;b<bs.length;b++){
     (function(el){
       el.addEventListener("click",function(){
-        buzz(10);
         var go=el.getAttribute("data-go");
-        if(go==="__mini"){setMiniMode(true);return;}
-        focusCard(go);
+        tileFx(el,go);
+        if(go==="__mini"){setTimeout(function(){setMiniMode(true);},120);return;}
+        setTimeout(function(){focusCard(go);},120);
       });
     })(bs[b]);
   }
@@ -3636,6 +3670,143 @@ function renderNav(){
   }
   var hi=$("#navHint");
   if(hi)hi.textContent="Saisis la longueur et la puissance de ton embarcation : les obligations et les coûts s adaptent. Seuils nationaux vérifiés (permis au-delà de 4,5 kW soit 6 CV ; enregistrement en mer dès 2,5 m ; vignette VNF au-delà de 5 m ou 9,9 CV). Tarifs indicatifs, grille VNF 2025 : confirme le montant exact avant de payer. Les boutons renvoient uniquement vers les guichets officiels de l État (mer.gouv.fr, demarches-plaisance.gouv.fr, vignettes-plaisance.vnf.fr, timbres.impots.gouv.fr, cartedepeche.fr) — aucun intermédiaire payant. Les arrêtés locaux priment toujours.";
+}
+
+/* ---------- sons brefs synthetises (aucun fichier, hors ligne) ---------- */
+var SND={on:true,ctx:null};
+try{var _sv=localStorage.getItem("estran_snd");if(_sv!==null)SND.on=(_sv==="1");}catch(e){}
+function audioCtx(){
+  try{
+    if(!SND.ctx){
+      var AC=window.AudioContext||window.webkitAudioContext;
+      if(!AC)return null;
+      SND.ctx=new AC();
+    }
+    if(SND.ctx.state==="suspended"&&SND.ctx.resume)SND.ctx.resume();
+    return SND.ctx;
+  }catch(e){return null;}
+}
+function noiseBuf(ctx,dur){
+  var n=Math.max(1,Math.floor(ctx.sampleRate*dur));
+  var b=ctx.createBuffer(1,n,ctx.sampleRate), d=b.getChannelData(0);
+  for(var i=0;i<n;i++)d[i]=Math.random()*2-1;
+  return b;
+}
+function env(ctx,g,peak,attack,dur){
+  var t=ctx.currentTime;
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(peak,t+attack);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+}
+function playSound(kind){
+  if(!SND.on)return;
+  var ctx=audioCtx();if(!ctx)return;
+  var t=ctx.currentTime, g=ctx.createGain(); g.connect(ctx.destination);
+  try{
+    if(kind==="drone"){
+      var o1=ctx.createOscillator(),o2=ctx.createOscillator(),lp=ctx.createBiquadFilter();
+      o1.type="sawtooth";o2.type="sawtooth";
+      o1.frequency.setValueAtTime(112,t);o2.frequency.setValueAtTime(117,t);
+      var lfo=ctx.createOscillator(),lg=ctx.createGain();
+      lfo.frequency.setValueAtTime(28,t);lg.gain.setValueAtTime(9,t);
+      lfo.connect(lg);lg.connect(o1.frequency);lg.connect(o2.frequency);
+      lp.type="lowpass";lp.frequency.setValueAtTime(900,t);
+      o1.connect(lp);o2.connect(lp);lp.connect(g);
+      env(ctx,g,0.16,0.04,0.34);
+      o1.start(t);o2.start(t);lfo.start(t);
+      o1.stop(t+0.36);o2.stop(t+0.36);lfo.stop(t+0.36);
+    }else if(kind==="pluie"){
+      var src=ctx.createBufferSource();src.buffer=noiseBuf(ctx,0.3);
+      var bp=ctx.createBiquadFilter();bp.type="bandpass";
+      bp.frequency.setValueAtTime(4200,t);bp.Q.setValueAtTime(0.8,t);
+      src.connect(bp);bp.connect(g);
+      env(ctx,g,0.14,0.02,0.28);
+      src.start(t);src.stop(t+0.3);
+    }else if(kind==="vague"){
+      var sv=ctx.createBufferSource();sv.buffer=noiseBuf(ctx,0.45);
+      var lp2=ctx.createBiquadFilter();lp2.type="lowpass";
+      lp2.frequency.setValueAtTime(380,t);
+      lp2.frequency.exponentialRampToValueAtTime(1500,t+0.18);
+      lp2.frequency.exponentialRampToValueAtTime(260,t+0.42);
+      sv.connect(lp2);lp2.connect(g);
+      env(ctx,g,0.2,0.12,0.42);
+      sv.start(t);sv.stop(t+0.45);
+    }else if(kind==="plouf"){
+      var os=ctx.createOscillator();os.type="sine";
+      os.frequency.setValueAtTime(620,t);
+      os.frequency.exponentialRampToValueAtTime(130,t+0.16);
+      var sp=ctx.createBufferSource();sp.buffer=noiseBuf(ctx,0.12);
+      var hp=ctx.createBiquadFilter();hp.type="highpass";hp.frequency.setValueAtTime(2200,t);
+      var g2=ctx.createGain();g2.gain.setValueAtTime(0.08,t);
+      g2.gain.exponentialRampToValueAtTime(0.0001,t+0.12);
+      os.connect(g);sp.connect(hp);hp.connect(g2);g2.connect(ctx.destination);
+      env(ctx,g,0.18,0.01,0.22);
+      os.start(t);os.stop(t+0.24);sp.start(t);sp.stop(t+0.12);
+    }else if(kind==="foudre"){
+      var sf=ctx.createBufferSource();sf.buffer=noiseBuf(ctx,0.4);
+      var lf=ctx.createBiquadFilter();lf.type="lowpass";
+      lf.frequency.setValueAtTime(3000,t);
+      lf.frequency.exponentialRampToValueAtTime(160,t+0.38);
+      sf.connect(lf);lf.connect(g);
+      env(ctx,g,0.24,0.006,0.4);
+      sf.start(t);sf.stop(t+0.4);
+    }else if(kind==="voiture"){
+      var ov=ctx.createOscillator();ov.type="sawtooth";
+      ov.frequency.setValueAtTime(72,t);
+      ov.frequency.linearRampToValueAtTime(96,t+0.26);
+      var lv=ctx.createBiquadFilter();lv.type="lowpass";lv.frequency.setValueAtTime(420,t);
+      ov.connect(lv);lv.connect(g);
+      env(ctx,g,0.15,0.05,0.3);
+      ov.start(t);ov.stop(t+0.32);
+    }else if(kind==="cloche"){
+      var c1=ctx.createOscillator(),c2=ctx.createOscillator();
+      c1.type="sine";c2.type="sine";
+      c1.frequency.setValueAtTime(880,t);c2.frequency.setValueAtTime(1320,t);
+      c1.connect(g);c2.connect(g);
+      env(ctx,g,0.13,0.008,0.3);
+      c1.start(t);c2.start(t);c1.stop(t+0.32);c2.stop(t+0.32);
+    }else if(kind==="photo"){
+      var p1=ctx.createBufferSource();p1.buffer=noiseBuf(ctx,0.05);
+      var pf=ctx.createBiquadFilter();pf.type="highpass";pf.frequency.setValueAtTime(1800,t);
+      p1.connect(pf);pf.connect(g);
+      env(ctx,g,0.16,0.004,0.06);
+      p1.start(t);p1.stop(t+0.06);
+    }else if(kind==="eclat"){
+      var oe=ctx.createOscillator();oe.type="triangle";
+      oe.frequency.setValueAtTime(1600,t);
+      oe.frequency.exponentialRampToValueAtTime(2600,t+0.18);
+      oe.connect(g);
+      env(ctx,g,0.1,0.01,0.26);
+      oe.start(t);oe.stop(t+0.28);
+    }else{
+      var ob=ctx.createOscillator();ob.type="sine";
+      ob.frequency.setValueAtTime(660,t);
+      ob.connect(g);
+      env(ctx,g,0.09,0.005,0.12);
+      ob.start(t);ob.stop(t+0.14);
+    }
+  }catch(e){}
+}
+function soundToggle(){
+  SND.on=!SND.on;
+  try{localStorage.setItem("estran_snd",SND.on?"1":"0");}catch(e){}
+  var b=$("#btnSnd");
+  if(b){b.textContent=SND.on?"🔊":"🔇";b.title=SND.on?"Sons activés":"Sons coupés";}
+  if(SND.on)playSound("cloche");
+  toast(SND.on?"Sons activés":"Sons coupés");
+  if(MINI&&!MINIFOCUS){try{renderMini();}catch(e){}}
+}
+function tileFx(btn,id){
+  playSound(soundFor(id));
+  buzz(10);
+  if(!btn||!btn.querySelector)return;
+  var ic=btn.querySelector(".hi");
+  if(!ic)return;
+  var cls="fx-"+animFor(id);
+  ic.classList.remove(cls);
+  void (ic.offsetWidth);
+  ic.classList.add(cls);
+  setTimeout(function(){try{ic.classList.remove(cls);}catch(e){}},900);
 }
 
 /* ---------- pluie prevue en carte pour les jours a venir ---------- */
@@ -4440,7 +4611,11 @@ function init(){
   carLabel();
   if($("#btnCar"))$("#btnCar").addEventListener("click",cycleCar);
   $("#btnGps").addEventListener("click",function(){locatePrecise();});
-  if($("#btnTrack"))$("#btnTrack").addEventListener("click",trackToggle);
+  if($("#btnTrack"))$("#btnTrack").addEventListener("click",function(){trackToggle();playSound("voiture");});
+  if($("#btnSnd")){
+    $("#btnSnd").textContent=SND.on?"🔊":"🔇";
+    $("#btnSnd").addEventListener("click",soundToggle);
+  }
   $("#radPlay").addEventListener("click",function(){
     if(DAY>0)fcPlay();else radarToggle();
   });
