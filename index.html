@@ -662,7 +662,7 @@ html.car #modal.kbd #results{max-height:30vh}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v83</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v84</b></p>
     </div>
   </header>
 
@@ -857,7 +857,7 @@ html.car #modal.kbd #results{max-height:30vh}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v83</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v84</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -1402,6 +1402,23 @@ function gridPoints(la,lo,step,n){
     out.push({la:+(la+i*step).toFixed(4),lo:+(lo+j*step).toFixed(4)});
   }
   return out;
+}
+function rainRGBA(mm){
+  if(mm==null||mm<0.08)return [0,0,0,0];
+  var st=[[0.08,[150,205,240,90]],[0.4,[90,175,230,140]],[1.2,[40,110,200,180]],
+          [3,[250,200,60,200]],[7,[240,140,40,215]],[14,[215,60,45,230]]];
+  var c=st[0][1];
+  for(var i=0;i<st.length;i++)if(mm>=st[i][0])c=st[i][1];
+  for(var j=0;j<st.length-1;j++){                       /* degrade continu entre paliers */
+    if(mm>=st[j][0]&&mm<st[j+1][0]){
+      var f=(mm-st[j][0])/(st[j+1][0]-st[j][0]);
+      var a2=st[j][1], b2=st[j+1][1];
+      c=[Math.round(a2[0]+(b2[0]-a2[0])*f),Math.round(a2[1]+(b2[1]-a2[1])*f),
+         Math.round(a2[2]+(b2[2]-a2[2])*f),Math.round(a2[3]+(b2[3]-a2[3])*f)];
+      break;
+    }
+  }
+  return c;
 }
 function rainColor(mm){
   if(mm==null||mm<0.1)return null;
@@ -4061,7 +4078,7 @@ function fcFetch(){
   var key=spotKey(state.la,state.lo)+"|"+isoDate(new Date());
   if(FC.key===key&&FC.vals)return;
   FC.busy=true;
-  var step=0.15, n=5;                       /* grille 5x5, maille ~15 km, couverture ~66 km */
+  var step=0.105, n=7;                      /* grille 7x7, maille ~9 km, couverture ~66 km */
   var pts=gridPoints(state.la,state.lo,step,n);
   var las=pts.map(function(p){return p.la;}).join(",");
   var los=pts.map(function(p){return p.lo;}).join(",");
@@ -4072,7 +4089,7 @@ function fcFetch(){
     if(!arr.length||!arr[0].hourly)throw new Error("grille");
     FC.times=arr[0].hourly.time;
     FC.pts=pts;
-    FC.step=step;
+    FC.step=step;FC.n=n;
     FC.vals=arr.map(function(x){return (x.hourly&&x.hourly.precipitation)||[];});
     FC.key=key;FC.busy=false;
     renderForecastMap();
@@ -4084,6 +4101,42 @@ function fcIndexFor(hour){
   var key=isoDate(d)+"T"+pad2(d.getHours())+":00";
   return FC.times.indexOf(key);
 }
+function fcImage(idx){
+  /* transforme la grille en image lissee : interpolation bilineaire par agrandissement */
+  var N=FC.n||5;
+  if(!document.createElement)return null;
+  var c=document.createElement("canvas");
+  if(!c.getContext)return null;
+  c.width=N;c.height=N;
+  var g=c.getContext("2d");
+  if(!g||!g.createImageData)return null;
+  var img=g.createImageData(N,N), any=false, mmax=0;
+  for(var row=0;row<N;row++){
+    for(var col=0;col<N;col++){
+      /* la grille va du sud au nord ; l image se dessine du nord au sud */
+      var gi=(N-1-row)*N+col;
+      var mm=(FC.vals[gi]&&FC.vals[gi][idx]!=null)?FC.vals[gi][idx]:0;
+      if(mm>mmax)mmax=mm;
+      var rgba=rainRGBA(mm);
+      if(rgba[3]>0)any=true;
+      var o=(row*N+col)*4;
+      img.data[o]=rgba[0];img.data[o+1]=rgba[1];img.data[o+2]=rgba[2];img.data[o+3]=rgba[3];
+    }
+  }
+  g.putImageData(img,0,0);
+  var big=document.createElement("canvas");
+  big.width=512;big.height=512;
+  var g2=big.getContext("2d");
+  if(!g2)return null;
+  g2.imageSmoothingEnabled=true;
+  if("imageSmoothingQuality" in g2)g2.imageSmoothingQuality="high";
+  /* double agrandissement : lissage plus doux, sans blocs */
+  var mid=document.createElement("canvas");mid.width=N*8;mid.height=N*8;
+  var gm=mid.getContext("2d");
+  if(gm){gm.imageSmoothingEnabled=true;gm.drawImage(c,0,0,N*8,N*8);g2.drawImage(mid,0,0,512,512);}
+  else g2.drawImage(c,0,0,512,512);
+  return {url:big.toDataURL?big.toDataURL():null,any:any,max:mmax};
+}
 function renderForecastMap(){
   if(!radar.map||!window.L)return;
   fcClear();
@@ -4091,23 +4144,20 @@ function renderForecastMap(){
   var hour=(FC.hour==null)?12:FC.hour;
   var idx=fcIndexFor(hour);
   if(idx<0)return;
-  var half=FC.step/2, any=false;
-  for(var i=0;i<FC.pts.length;i++){
-    var mm=(FC.vals[i]&&FC.vals[i][idx]!=null)?FC.vals[i][idx]:null;
-    var col=rainColor(mm);
-    if(!col)continue;
-    any=true;
-    var p=FC.pts[i];
-    var rect=L.rectangle([[p.la-half,p.lo-half],[p.la+half,p.lo+half]],
-      {color:col,weight:0,fillColor:col,fillOpacity:.45});
-    rect.bindPopup(frNum(mm,1)+" mm à "+pad2(hour)+"h00");
-    rect.addTo(radar.map);
-    FC.layers.push(rect);
+  var N=FC.n||5, half=FC.step/2;
+  var im=fcImage(idx);
+  var any=im?im.any:false;
+  if(im&&im.url&&L.imageOverlay){
+    var la0=FC.pts[0].la-half, lo0=FC.pts[0].lo-half;
+    var la1=FC.pts[FC.pts.length-1].la+half, lo1=FC.pts[FC.pts.length-1].lo+half;
+    var ov=L.imageOverlay(im.url,[[la0,lo0],[la1,lo1]],{opacity:0.78,interactive:false});
+    ov.addTo(radar.map);
+    FC.layers.push(ov);
   }
   var tEl=$("#radTime");
   var d=parseLocal(M.hourly.time[TODAY+DAY*24]);
   if(tEl)tEl.textContent=d.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric"})+" "+pad2(hour)+"h00"
-    +(any?"":" · pas de pluie modélisée");
+    +(any?(im&&im.max?" · jusqu à "+frNum(im.max,1)+" mm":""):" · pas de pluie modélisée");
 }
 function fcPlay(){
   if(FC.timer){clearInterval(FC.timer);FC.timer=null;var b=$("#radPlay");if(b)b.textContent="▶ Animation";return;}
