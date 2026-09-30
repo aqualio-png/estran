@@ -662,7 +662,7 @@ html.car #modal.kbd #results{max-height:30vh}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v82</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v83</b></p>
     </div>
   </header>
 
@@ -857,7 +857,7 @@ html.car #modal.kbd #results{max-height:30vh}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v82</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v83</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -3947,9 +3947,12 @@ function bufFor(ctx,kind){
     /* corne de brume de paquebot : accord grave de partiels legerement desaccordes,
        attaque lente de l air comprime, tenue puis extinction longue dans le port */
     b=renderStereo(ctx,5.4,function(L,R,n,sr){
-      var part=[{f:62,a:1.00,v:0.0},{f:82.5,a:0.72,v:0.5},{f:93,a:0.55,v:1.1},
-                {f:124,a:0.40,v:0.3},{f:165,a:0.22,v:0.8},{f:186,a:0.14,v:1.6}];
-      var ph=[0,0,0,0,0,0], airL=0, airR=0;
+      /* fondamentales remontees : le grave profond reste pour le casque,
+         mais l essentiel de l energie est porte par des partiels audibles sur un petit haut-parleur */
+      var part=[{f:110,a:0.85,v:0.0},{f:147,a:0.80,v:0.5},{f:165,a:0.70,v:1.1},
+                {f:220,a:0.55,v:0.3},{f:294,a:0.45,v:0.8},{f:330,a:0.34,v:1.6},
+                {f:440,a:0.22,v:0.4},{f:551,a:0.13,v:1.3},{f:73,a:0.45,v:0.2}];
+      var ph=[0,0,0,0,0,0,0,0,0], airL=0, airR=0;
       for(var i=0;i<n;i++){
         var t=i/sr;
         /* enveloppe : montee en pression, tenue, longue extinction */
@@ -3965,7 +3968,7 @@ function bufFor(ctx,kind){
           ph[k]+=(pt.f*vib)/sr;
           v+=Math.sin(2*Math.PI*ph[k])*pt.a;
         }
-        v*=amp*growl*0.3;
+        v*=amp*growl*0.23;
         /* souffle de l air comprime, surtout a l attaque */
         airL=airL*0.9+rnd2()*0.1; airR=airR*0.9+rnd2()*0.1;
         var blow=Math.exp(-t*1.6)*0.5+0.12;
@@ -4014,12 +4017,13 @@ function playSound(kind){
     var b=bufFor(ctx,kind);
     if(!b)return;
     var rev=null, gain=0.5;
-    if(kind==="foudre"){rev=reverb(ctx,0.45,2.6,2.0);gain=0.55;}
-    else if(kind==="vague"){rev=reverb(ctx,0.18,2.2,2.8);gain=0.6;}
-    else if(kind==="paquebot"){rev=reverb(ctx,0.32,2.8,1.9);gain=0.5;}
-    else if(kind==="moulinet"){rev=reverb(ctx,0.14,0.9,3.2);gain=0.6;}
-    else if(kind==="pluie"){rev=reverb(ctx,0.16,1.4,2.4);gain=0.55;}
-    else if(kind==="drone"){gain=0.45;}
+    if(kind==="foudre"){rev=reverb(ctx,0.45,2.6,2.0);gain=0.95;}
+    else if(kind==="vague"){rev=reverb(ctx,0.18,2.2,2.8);gain=0.30;}
+    else if(kind==="paquebot"){rev=reverb(ctx,0.32,2.8,1.9);gain=1.00;}
+    else if(kind==="moulinet"){rev=reverb(ctx,0.14,0.9,3.2);gain=1.05;}
+    else if(kind==="pluie"){rev=reverb(ctx,0.16,1.4,2.4);gain=1.15;}
+    else if(kind==="drone"){gain=1.30;}
+    else if(kind==="voiture"){gain=0.66;}
     playBuf(ctx,b,gain,rev);
   }catch(e){}
 }
