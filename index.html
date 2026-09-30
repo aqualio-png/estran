@@ -662,7 +662,7 @@ html.car #modal.kbd #results{max-height:30vh}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v80</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v81</b></p>
     </div>
   </header>
 
@@ -857,7 +857,7 @@ html.car #modal.kbd #results{max-height:30vh}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v80</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v81</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -3744,43 +3744,67 @@ function bufFor(ctx,kind){
   if(SND.cache[kind])return SND.cache[kind];
   var b=null, sr=ctx.sampleRate;
   if(kind==="vague"){
-    /* houle : bruit brun module par un filtre passe-bande balaye, deferlement large bande, mousse granulaire */
-    b=renderStereo(ctx,4.6,function(L,R,n,sr){
-      var f1=svf(),f2=svf(),br=0,br2=0;
+    /* vague de plage : fond d ocean continu, houle qui approche, deferlement,
+       nappe de mousse qui court, puis ressac. Filtres a un pole (aucune resonance, donc aucun sifflement). */
+    b=renderStereo(ctx,6.2,function(L,R,n,sr){
+      var lp1L=0,lp1R=0,lp2L=0,lp2R=0,lp3L=0,lp3R=0,hpL=0,hpR=0,bedL=0,bedR=0;
+      var crackL=0,crackR=0;
+      var tBreak=2.1;
       for(var i=0;i<n;i++){
-        var t=i/sr, p=t/4.6;
-        br=(br+0.018*rnd2())/1.018; br2=(br2+0.018*rnd2())/1.018;
-        var swell=Math.pow(Math.sin(Math.PI*Math.min(1,p*1.25)),1.6);         /* la vague enfle */
-        var cut=(160+1900*Math.pow(Math.max(0,(t-1.4)/1.6),1.4))/sr;          /* elle se leve */
-        var a=f1.run(br*6,Math.min(0.45,cut),0.9);
-        var bq=f2.run(br2*6,Math.min(0.45,cut*1.07),0.9);
-        var body=(a.lp*0.5+a.bp*0.7)*swell;
-        var bodyR=(bq.lp*0.5+bq.bp*0.7)*swell;
-        var brk=0;
-        if(t>1.55&&t<2.9){                                                     /* deferlement */
-          var e=Math.exp(-(t-1.55)*2.1);
-          brk=rnd2()*e*2.6;
+        var t=i/sr;
+        var wL=rnd2(), wR=rnd2();                       /* bruits independants : vraie stereo */
+        /* --- fond d ocean : autres vagues au loin, toujours present --- */
+        bedL=bedL+0.010*(wL-bedL); bedR=bedR+0.010*(wR-bedR);
+        var bedMod=0.55+0.45*Math.sin(2*Math.PI*0.17*t+0.7)*Math.sin(2*Math.PI*0.09*t);
+        var bed=bedMod*0.30;
+        /* --- houle qui approche : grave qui enfle, coupure qui s ouvre --- */
+        var app=Math.max(0,Math.min(1,t/tBreak));
+        var fSw=(70+420*app*app)/sr*2*Math.PI;
+        lp1L=lp1L+Math.min(0.5,fSw)*(wL*2.2-lp1L);
+        lp1R=lp1R+Math.min(0.5,fSw)*(wR*2.2-lp1R);
+        var swell=Math.pow(app,2.2)*1.15;
+        /* --- deferlement : choc large bande + coup sourd --- */
+        var brk=0, brkL=0, brkR=0;
+        if(t>=tBreak){
+          var dt=t-tBreak;
+          var eB=Math.exp(-dt*2.6);
+          var eT=Math.exp(-dt*7.5);
+          lp2L=lp2L+0.045*(wL*3-lp2L); lp2R=lp2R+0.045*(wR*3-lp2R);   /* coup sourd ~120 Hz */
+          brkL=(wL*0.85*eB)+(lp2L*1.5*eT);
+          brkR=(wR*0.85*eB)+(lp2R*1.5*eT);
         }
-        var foam=0;
-        if(t>2.2){                                                             /* mousse : craquements */
-          var fe=Math.exp(-(t-2.2)*0.9);
-          if(Math.random()<0.28)foam=rnd2()*fe*0.5;
+        /* --- mousse : nappe aigue qui court puis s eteint, avec craquements de bulles --- */
+        var foamL=0, foamR=0;
+        if(t>=tBreak+0.15){
+          var df=t-(tBreak+0.15);
+          var eF=Math.exp(-df*0.62);
+          lp3L=lp3L+0.55*(wL-lp3L); lp3R=lp3R+0.55*(wR-lp3R);
+          hpL=wL-lp3L*0.55; hpR=wR-lp3R*0.55;            /* passe-haut : le sifflement de l ecume */
+          if(Math.random()<0.5*eF)crackL=rnd2()*0.5;
+          if(Math.random()<0.5*eF)crackR=rnd2()*0.5;
+          crackL*=0.86; crackR*=0.86;
+          foamL=(hpL*0.55+crackL*0.35)*eF;
+          foamR=(hpR*0.55+crackR*0.35)*eF;
         }
-        var env=Math.min(1,t/0.25)*Math.min(1,(4.6-t)/0.6);
-        L[i]=sat((body+brk*0.9+foam)*env*0.55);
-        R[i]=sat((bodyR+brk*0.86+foam*0.8)*env*0.55);
+        /* --- ressac : l eau se retire, grave qui revient --- */
+        var back=0;
+        if(t>tBreak+1.6){
+          var db=t-(tBreak+1.6);
+          back=Math.exp(-db*0.8)*0.35*Math.sin(2*Math.PI*0.35*db+1.2);
+        }
+        var env=Math.min(1,t/0.5)*Math.min(1,(6.2-t)/0.9);
+        L[i]=sat((bed*(0.5+bedL*3)+lp1L*swell*1.5+brkL*1.25+foamL*0.85+lp1L*back)*env*0.58);
+        R[i]=sat((bed*(0.5+bedR*3)+lp1R*swell*1.5+brkR*1.22+foamR*0.85+lp1R*back)*env*0.58);
       }
     });
   }else if(kind==="pluie"){
-    /* averse : nappe + gouttes individuelles, avec un coup de tonnerre et son grondement */
-    b=renderStereo(ctx,5.0,function(L,R,n,sr){
-      var hissL=0,hissR=0,drops=[],rum=svf(),br=0;
-      var tBoom=1.25;                                     /* instant de la detonation */
-      var tmp=new Float32Array(n);
+    /* averse seule : nappe de fond et gouttes individuelles, sans tonnerre */
+    b=renderStereo(ctx,4.2,function(L,R,n,sr){
+      var hissL=0,hissR=0,drops=[];
       for(var i=0;i<n;i++){
         var t=i/sr;
         hissL=hissL*0.86+rnd2()*0.14; hissR=hissR*0.86+rnd2()*0.14;
-        var intens=0.7+0.5*Math.min(1,Math.max(0,(t-tBoom)/1.2));   /* l averse force apres le coup */
+        var intens=0.85+0.3*Math.sin(2*Math.PI*0.22*t);       /* l averse respire */
         if(Math.random()<0.05*intens){
           drops.push({p:0,f:(900+Math.random()*4200)/sr,d:Math.exp(-1/(sr*(0.004+Math.random()*0.012))),
                       a:0.25+Math.random()*0.55,pan:Math.random()});
@@ -3795,31 +3819,9 @@ function bufFor(ctx,kind){
           var v=Math.sin(2*Math.PI*dr.p)*dr.a;
           sL+=v*(1-dr.pan); sR+=v*dr.pan;
         }
-        /* tonnerre : claquement puis grondement */
-        var th=0;
-        if(t>=tBoom){
-          var dt=t-tBoom;
-          if(dt<0.6)th+=rnd2()*Math.exp(-dt*9)*4.6;
-          br=(br+0.02*rnd2())/1.02;
-          var g=rum.run(br*7,Math.min(0.24,(520*Math.exp(-dt*0.6))/sr),1.1);
-          th+=g.lp*(0.55+0.45*Math.sin(2*Math.PI*1.8*dt))*Math.exp(-dt*0.42)*1.7;
-        }
-        tmp[i]=th;
-        var env=Math.min(1,t/0.4)*Math.min(1,(5.0-t)/0.8);
-        L[i]=sat((sL*0.12+hissL*0.17*intens)*env);
-        R[i]=sat((sR*0.12+hissR*0.17*intens)*env);
-      }
-      /* echos du tonnerre ajoutes apres coup */
-      var ech=[{d:0.42,a:0.6},{d:1.05,a:0.4},{d:2.0,a:0.25}];
-      for(var j=0;j<n;j++){
-        var e=tmp[j];
-        for(var q=0;q<ech.length;q++){
-          var k2=j-Math.floor(ech[q].d*sr);
-          if(k2>0)e+=tmp[k2]*ech[q].a;
-        }
-        var ev=Math.min(1,(5.0-j/sr)/0.8);
-        L[j]=sat(L[j]+e*0.52*ev);
-        R[j]=sat(R[j]+e*0.48*ev);
+        var env=Math.min(1,t/0.4)*Math.min(1,(4.2-t)/0.8);
+        L[i]=sat((sL*0.16+hissL*0.22*intens)*env);
+        R[i]=sat((sR*0.16+hissR*0.22*intens)*env);
       }
     });
   }else if(kind==="foudre"){
@@ -4003,10 +4005,10 @@ function playSound(kind){
     if(!b)return;
     var rev=null, gain=0.5;
     if(kind==="foudre"){rev=reverb(ctx,0.45,2.6,2.0);gain=0.55;}
-    else if(kind==="vague"){rev=reverb(ctx,0.22,1.6,2.6);gain=0.55;}
+    else if(kind==="vague"){rev=reverb(ctx,0.18,2.2,2.8);gain=0.6;}
     else if(kind==="horsbord"){rev=reverb(ctx,0.16,1.1,2.8);gain=0.5;}
     else if(kind==="moulinet"){rev=reverb(ctx,0.14,0.9,3.2);gain=0.6;}
-    else if(kind==="pluie"){rev=reverb(ctx,0.3,2.2,2.2);gain=0.5;}
+    else if(kind==="pluie"){rev=reverb(ctx,0.16,1.4,2.4);gain=0.55;}
     else if(kind==="drone"){gain=0.45;}
     playBuf(ctx,b,gain,rev);
   }catch(e){}
