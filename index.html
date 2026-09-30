@@ -123,7 +123,8 @@ body.mini{padding:0}
   display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; color:var(--mist);
   font-family:"Spline Sans Mono",monospace; font-size:13px;
 }
-.mopen{
+.mopen{border:none; width:100%; font-family:inherit; cursor:pointer;
+  
   display:block; text-align:center; margin-top:14px; background:var(--badgeBg); color:var(--badgeFg);
   border-radius:12px; padding:11px; font-weight:700; font-size:14px; text-decoration:none;
 }
@@ -630,7 +631,7 @@ html.car #modal.kbd #results{max-height:30vh}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v71</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v72</b></p>
     </div>
   </header>
 
@@ -815,7 +816,7 @@ html.car #modal.kbd #results{max-height:30vh}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v71</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v72</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -2770,11 +2771,43 @@ function updTries(){
 function setTries(n){
   try{if(n)sessionStorage.setItem("estran_upd",String(n));else sessionStorage.removeItem("estran_upd");}catch(e){}
 }
+function isWebUrl(){return /^https?:/i.test(String(location.href));}
+function baseUrl(){return String(location.href).split("?")[0].split("#")[0];}
+function setMiniMode(on){
+  MINI=!!on;
+  MINIFOCUS=false;
+  FOCUS=null;
+  try{applyTheme(THEME,true);}catch(e){}
+  try{applyMode();}catch(e){}
+  var mv=$("#miniView"), fv=$("#fullView");
+  if(mv)mv.style.display=MINI?"block":"none";
+  if(fv)fv.style.display=MINI?"none":"block";
+  if(MINI){
+    if(M){try{renderMini();}catch(e){}}
+  }else{
+    try{setCardsVisible(null);}catch(e){}
+    var bb=$("#backBar");if(bb)bb.style.display="none";
+    var hero=document.querySelector(".hero");if(hero)hero.style.display="";
+    var hg=$("#homeGrid");if(hg)hg.style.display="";
+    if(M){try{renderDay();}catch(e){}}
+    if(state.la!=null){try{renderDroneZone();}catch(e){}}
+    setTimeout(function(){try{initRadar();}catch(e){}},80);
+  }
+  /* refleter le mode dans l adresse, sans jamais recharger la page */
+  try{
+    if(isWebUrl()&&window.history&&history.replaceState){
+      history.replaceState(null,"",baseUrl()+(MINI?"?mini=1":""));
+    }
+  }catch(e){}
+  try{window.scrollTo(0,0);}catch(e){}
+}
 function goFresh(base){
+  if(!isWebUrl())return;                 /* fichier local ou content:// : aucune navigation */
   var mini=/[?&#]mini/.test(String(location.href));
   location.replace(base+"?"+(mini?"mini=1&":"")+"v="+Date.now());
 }
 function checkUpdate(){
+  if(!isWebUrl())return;                 /* pas de verification de version hors HTTP(S) */
   var el=$("#appVer");
   var localVer=el?(el.textContent||"").trim():"";
   if(!localVer)return;
@@ -3012,7 +3045,7 @@ function renderMini(){
   h+="</div>";
   h+="<div class='mact' id='miniAct'></div>";
   h+="<div class='mttl'>Ouvrir une tuile</div><div class='homegrid' id='miniGrid'></div>";
-  h+="<a class='mopen' href='"+String(location.href).split("?")[0].split("#")[0]+"'>Ouvrir Estran en entier →</a>";
+  h+="<button class='mopen' id='mFull'>Ouvrir Estran en entier →</button>";
   el.innerHTML=h;
   renderMiniAct();
   renderMiniGrid();
@@ -3049,6 +3082,8 @@ function renderMiniAct(){
     if(state.la!=null)fetchAll(state.la,state.lo,state.label,false);else locate(false);
   });
   var th=$("#mTheme");if(th)th.addEventListener("click",function(){cycleTheme();renderMini();});
+  var fu=$("#mFull");
+  if(fu)fu.addEventListener("click",function(){setMiniMode(false);});
   var sp=$("#miniSpot");
   if(sp)sp.addEventListener("click",function(){
     renderFavs();
@@ -4362,7 +4397,7 @@ function init(){
     var t=e.target;var k=t&&t.getAttribute&&t.getAttribute("data-dl");if(k)dlShortcut(k);
   });
   $("#btnMini").addEventListener("click",function(){
-    location.href=String(location.href).split("?")[0].split("#")[0]+"?mini=1";
+    setMiniMode(true);
   });
   $("#btnFav").addEventListener("click",addFav);
   if($("#btnHome"))$("#btnHome").addEventListener("click",toggleHome);
