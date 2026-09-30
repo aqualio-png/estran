@@ -662,7 +662,7 @@ html.car #modal.kbd #results{max-height:30vh}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v78</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v79</b></p>
     </div>
   </header>
 
@@ -857,7 +857,7 @@ html.car #modal.kbd #results{max-height:30vh}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v78</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v79</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -3799,15 +3799,15 @@ function bufFor(ctx,kind){
         var th=0;
         if(t>=tBoom){
           var dt=t-tBoom;
-          if(dt<0.45)th+=rnd2()*Math.exp(-dt*12)*2.4;
+          if(dt<0.6)th+=rnd2()*Math.exp(-dt*9)*4.6;
           br=(br+0.02*rnd2())/1.02;
           var g=rum.run(br*7,Math.min(0.24,(520*Math.exp(-dt*0.6))/sr),1.1);
-          th+=g.lp*(0.55+0.45*Math.sin(2*Math.PI*1.8*dt))*Math.exp(-dt*0.5)*0.9;
+          th+=g.lp*(0.55+0.45*Math.sin(2*Math.PI*1.8*dt))*Math.exp(-dt*0.42)*1.7;
         }
         tmp[i]=th;
         var env=Math.min(1,t/0.4)*Math.min(1,(5.0-t)/0.8);
-        L[i]=sat((sL*0.2+hissL*0.3*intens)*env);
-        R[i]=sat((sR*0.2+hissR*0.3*intens)*env);
+        L[i]=sat((sL*0.12+hissL*0.17*intens)*env);
+        R[i]=sat((sR*0.12+hissR*0.17*intens)*env);
       }
       /* echos du tonnerre ajoutes apres coup */
       var ech=[{d:0.42,a:0.6},{d:1.05,a:0.4},{d:2.0,a:0.25}];
@@ -3818,8 +3818,8 @@ function bufFor(ctx,kind){
           if(k2>0)e+=tmp[k2]*ech[q].a;
         }
         var ev=Math.min(1,(5.0-j/sr)/0.8);
-        L[j]=sat(L[j]+e*0.34*ev);
-        R[j]=sat(R[j]+e*0.31*ev);
+        L[j]=sat(L[j]+e*0.52*ev);
+        R[j]=sat(R[j]+e*0.48*ev);
       }
     });
   }else if(kind==="foudre"){
@@ -3891,20 +3891,20 @@ function bufFor(ctx,kind){
         var t=i/sr, v=0;
         var rate=7+52*Math.exp(-t*0.95);              /* depart fulgurant puis le poisson fatigue */
         if(t>=next){
-          clicks.push({t:t,f:1150+Math.random()*1700,a:0.45+Math.random()*0.35});
+          clicks.push({t:t,f:2600+Math.random()*3400,a:0.45+Math.random()*0.35});
           if(clicks.length>40)clicks.shift();
           next=t+(1/rate)*(0.82+0.36*Math.random());
         }
         for(var k=0;k<clicks.length;k++){
           var c=clicks[k], dt=t-c.t;
           if(dt<0||dt>0.03)continue;
-          v+=Math.sin(2*Math.PI*c.f*dt)*Math.exp(-dt*230)*c.a
-             +Math.sin(2*Math.PI*c.f*0.5*dt)*Math.exp(-dt*150)*c.a*0.4;
+          v+=Math.sin(2*Math.PI*c.f*dt)*Math.exp(-dt*320)*c.a
+             +Math.sin(2*Math.PI*c.f*1.9*dt)*Math.exp(-dt*420)*c.a*0.45;
         }
-        spool+=(rate*4.2)/sr;                          /* ronflement du tambour, lie a la vitesse */
+        spool+=(rate*9.5)/sr;                          /* ronflement du tambour, lie a la vitesse */
         v+=Math.sin(2*Math.PI*spool)*0.09*Math.exp(-t*0.5);
-        hiss=hiss*0.82+rnd2()*0.18;
-        v+=hiss*0.055*Math.exp(-t*0.55);               /* le fil qui siffle dans les anneaux */
+        hiss=hiss*0.62+rnd2()*0.38;
+        v+=hiss*0.075*Math.exp(-t*0.5);               /* le fil qui siffle dans les anneaux */
         var env=Math.min(1,t/0.01)*Math.min(1,(3.0-t)/0.5);
         var Dm=Math.floor(sr*0.0018);
         L[i]=sat(v*env*0.62);
@@ -3912,21 +3912,39 @@ function bufFor(ctx,kind){
       }
     });
   }else if(kind==="voiture"){
-    /* moteur 4 cylindres : train d impulsions filtre + roulement des pneus */
-    b=renderStereo(ctx,3.0,function(L,R,n,sr){
-      var f=svf(),ph=0,road=0,roadL=0;
+    /* V6 de Formule 1 : frequence d allumage tres elevee, harmoniques riches, passages de rapports, turbo */
+    b=renderStereo(ctx,3.6,function(L,R,n,sr){
+      var ph=0, turbo=0, air=0, f2=svf();
+      var shifts=[0.95,1.65,2.25,2.8];        /* montees de rapport */
       for(var i=0;i<n;i++){
         var t=i/sr;
-        var rpm=(820+900*Math.min(1,t/1.3)-160*Math.max(0,(t-2)/1))/60;   /* montee puis palier */
-        var fire=rpm*2;                                                    /* 4 cylindres, 4 temps */
+        var seg=0, base=t;
+        for(var sIdx=0;sIdx<shifts.length;sIdx++)if(t>shifts[sIdx])seg=sIdx+1;
+        var t0s=seg?shifts[seg-1]:0;
+        var dt=t-t0s;
+        /* regime : monte vite dans chaque rapport, chute d environ 14 % au passage */
+        var rpm=(9500+5600*Math.min(1,dt/0.85))*Math.pow(0.86,0)*(seg?Math.pow(1.0,seg):1);
+        if(seg>0)rpm=(9500*Math.pow(1.03,seg)+5600*Math.min(1,dt/0.8));
+        var fire=rpm/60*3;                     /* V6 quatre temps : 3 explosions par tour */
         ph+=fire/sr;
-        var pulse=Math.pow(Math.max(0,Math.sin(2*Math.PI*ph)),8)*2-0.15;   /* explosions */
-        var g=f.run(pulse,Math.min(0.45,(420+220*Math.sin(2*Math.PI*0.4*t))/sr),0.7);
-        road=road*0.94+rnd2()*0.06; roadL=roadL*0.9+rnd2()*0.1;
-        var env=Math.min(1,t/0.3)*Math.min(1,(3.0-t)/0.5);
-        var Dv=Math.floor(sr*0.0016);
-        L[i]=sat((g.lp*0.5+road*0.16+roadL*0.05)*env);
-        R[i]=sat((i>Dv?L[i-Dv]*0.93:0)-roadL*0.06*env);
+        var v=0;
+        v+=Math.sin(2*Math.PI*ph)*0.5;
+        v+=Math.sin(4*Math.PI*ph)*0.34;
+        v+=Math.sin(6*Math.PI*ph)*0.22;
+        v+=Math.sin(8*Math.PI*ph)*0.14;
+        v+=Math.sin(10*Math.PI*ph)*0.09;       /* le cri aigu vient de ces harmoniques */
+        var g=f2.run(v,Math.min(0.24,(2600+900*Math.sin(2*Math.PI*0.7*t))/sr),1.2);
+        v=g.lp*0.55+g.bp*0.6+v*0.35;
+        turbo+=2*Math.PI*(fire*1.55)/sr;       /* sifflement de turbo */
+        v+=Math.sin(turbo)*0.07;
+        air=air*0.9+rnd2()*0.1;
+        v+=air*0.05;
+        var cut=(seg>0&&dt<0.06)?Math.max(0,1-dt/0.06)*0.55:0;   /* coupure allumage au passage */
+        v*=(1-cut);
+        var env=Math.min(1,t/0.15)*Math.min(1,(3.6-t)/0.5);
+        var Df=Math.floor(sr*0.0014);
+        L[i]=sat(v*env*0.42);
+        R[i]=sat((i>Df?L[i-Df]*0.9:0)+air*0.02*env);
       }
     });
   }else if(kind==="horsbord"){
@@ -3935,16 +3953,16 @@ function bufFor(ctx,kind){
       var f1=svf(), ph=0, wash=0, washR=0;
       for(var i=0;i<n;i++){
         var t=i/sr;
-        var fire=(62+78*(1-Math.exp(-t*1.7))+3*Math.sin(2*Math.PI*0.8*t));  /* montee en regime */
+        var fire=(58+192*(1-Math.exp(-t*1.25))+4*Math.sin(2*Math.PI*0.9*t));  /* plein gaz, passage au planing */
         ph+=fire/sr;
-        var pulse=Math.pow(Math.max(0,Math.sin(2*Math.PI*ph)),14)*2.2-0.2;  /* claquement deux temps */
+        var pulse=Math.pow(Math.max(0,Math.sin(2*Math.PI*ph)),11)*2.4-0.22;  /* claquement deux temps */
         var g=f1.run(pulse,Math.min(0.24,(1500+700*Math.sin(2*Math.PI*0.5*t))/sr),1.5);
         var v=g.lp*0.55+g.bp*0.25;
-        v+=Math.sin(2*Math.PI*ph*2)*0.08+Math.sin(2*Math.PI*ph*3)*0.05;     /* harmoniques aigues */
+        v+=Math.sin(2*Math.PI*ph*2)*0.13+Math.sin(2*Math.PI*ph*3)*0.09+Math.sin(2*Math.PI*ph*4)*0.05;
         wash=wash*0.93+rnd2()*0.07; washR=washR*0.93+rnd2()*0.07;
         var wmod=0.5+0.5*Math.sin(2*Math.PI*fire/6*t);                      /* remous rythme par l helice */
         v+=wash*0.14*wmod;
-        if(Math.random()<0.004)v+=rnd2()*0.25;                              /* cavitation */
+        if(Math.random()<0.009*(1-Math.min(1,t/1.2)))v+=rnd2()*0.35;        /* cavitation au demarrage */
         var env=Math.min(1,t/0.25)*Math.min(1,(3.4-t)/0.5);
         var Dh=Math.floor(sr*0.0026);
         L[i]=sat(v*env*0.5);
