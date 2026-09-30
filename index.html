@@ -662,7 +662,7 @@ html.car #modal.kbd #results{max-height:30vh}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v81</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v82</b></p>
     </div>
   </header>
 
@@ -857,7 +857,7 @@ html.car #modal.kbd #results{max-height:30vh}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v81</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v82</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -1386,7 +1386,7 @@ function pickHydroStation(list,la,lo){
 }
 function soundFor(id){
   var map={__mini:"blip", tideCard:"vague", surfCard:"vague", pecheCard:"moulinet",
-    droneCard:"drone", dzoneCard:"drone", navCard:"horsbord", condCard:"blip",
+    droneCard:"drone", dzoneCard:"drone", navCard:"paquebot", condCard:"blip",
     radarCard:"pluie", identSection:"photo", eclCard:"eclat", shareCard:"blip"};
   return map[id]||"blip";
 }
@@ -3854,8 +3854,8 @@ function bufFor(ctx,kind){
   }else if(kind==="drone"){
     /* demarrage multirotor : montee des 4 moteurs vers un regime aigu, sifflement des pales, stabilisation */
     b=renderStereo(ctx,3.6,function(L,R,n,sr){
-      var mot=[{f0:34,f1:196,ph:0,w:0,pan:0.12},{f0:34,f1:206,ph:0,w:0,pan:0.88},
-               {f0:34,f1:214,ph:0,w:0,pan:0.32},{f0:34,f1:224,ph:0,w:0,pan:0.68}];
+      var mot=[{f0:38,f1:252,ph:0,w:0,pan:0.12},{f0:38,f1:266,ph:0,w:0,pan:0.88},
+               {f0:38,f1:277,ph:0,w:0,pan:0.32},{f0:38,f1:289,ph:0,w:0,pan:0.68}];
       var whine=0, air=0;
       for(var i=0;i<n;i++){
         var t=i/sr;
@@ -3873,12 +3873,13 @@ function bufFor(ctx,kind){
                +Math.sin(4*Math.PI*ph)*0.30
                +Math.sin(6*Math.PI*ph)*0.20
                +Math.sin(8*Math.PI*ph)*0.13
-               +Math.sin(12*Math.PI*ph)*0.07;            /* harmoniques hautes = son aigu */
+               +Math.sin(12*Math.PI*ph)*0.11
+               +Math.sin(16*Math.PI*ph)*0.07;          /* harmoniques hautes = son aigu */
           v*=0.78+0.22*Math.sin(2*Math.PI*ph*2);          /* passage de pales */
           sL+=v*(1-mo.pan); sR+=v*mo.pan;
         }
-        whine+=2*Math.PI*(fcur*9.5)/sr;                    /* sifflement aigu proportionnel au regime */
-        var wv=Math.sin(whine)*0.05*ramp;
+        whine+=2*Math.PI*(fcur*12.5)/sr;                   /* sifflement aigu proportionnel au regime */
+        var wv=Math.sin(whine)*0.085*ramp;
         air=air*0.87+rnd2()*0.13;
         var env=Math.min(1,t/0.12)*Math.min(1,(3.6-t)/0.45);
         L[i]=sat((sL*0.12+wv+air*0.085*ramp)*env);
@@ -3942,26 +3943,35 @@ function bufFor(ctx,kind){
         R[i]=sat((i>Dt?L[i-Dt]*0.93:0));
       }
     });
-  }else if(kind==="horsbord"){
-    /* moteur hors-bord deux temps : impulsions d allumage aigues, remous d helice, cavitation */
-    b=renderStereo(ctx,3.4,function(L,R,n,sr){
-      var f1=svf(), ph=0, wash=0, washR=0;
+  }else if(kind==="paquebot"){
+    /* corne de brume de paquebot : accord grave de partiels legerement desaccordes,
+       attaque lente de l air comprime, tenue puis extinction longue dans le port */
+    b=renderStereo(ctx,5.4,function(L,R,n,sr){
+      var part=[{f:62,a:1.00,v:0.0},{f:82.5,a:0.72,v:0.5},{f:93,a:0.55,v:1.1},
+                {f:124,a:0.40,v:0.3},{f:165,a:0.22,v:0.8},{f:186,a:0.14,v:1.6}];
+      var ph=[0,0,0,0,0,0], airL=0, airR=0;
       for(var i=0;i<n;i++){
         var t=i/sr;
-        var fire=(58+192*(1-Math.exp(-t*1.25))+4*Math.sin(2*Math.PI*0.9*t));  /* plein gaz, passage au planing */
-        ph+=fire/sr;
-        var pulse=Math.pow(Math.max(0,Math.sin(2*Math.PI*ph)),11)*2.4-0.22;  /* claquement deux temps */
-        var g=f1.run(pulse,Math.min(0.24,(1500+700*Math.sin(2*Math.PI*0.5*t))/sr),1.5);
-        var v=g.lp*0.55+g.bp*0.25;
-        v+=Math.sin(2*Math.PI*ph*2)*0.13+Math.sin(2*Math.PI*ph*3)*0.09+Math.sin(2*Math.PI*ph*4)*0.05;
-        wash=wash*0.93+rnd2()*0.07; washR=washR*0.93+rnd2()*0.07;
-        var wmod=0.5+0.5*Math.sin(2*Math.PI*fire/6*t);                      /* remous rythme par l helice */
-        v+=wash*0.14*wmod;
-        if(Math.random()<0.009*(1-Math.min(1,t/1.2)))v+=rnd2()*0.35;        /* cavitation au demarrage */
-        var env=Math.min(1,t/0.25)*Math.min(1,(3.4-t)/0.5);
-        var Dh=Math.floor(sr*0.0026);
-        L[i]=sat(v*env*0.5);
-        R[i]=sat((i>Dh?L[i-Dh]*0.9:0)+(washR*0.06-wash*0.03)*env);
+        /* enveloppe : montee en pression, tenue, longue extinction */
+        var amp;
+        if(t<0.35)amp=Math.pow(t/0.35,1.6);
+        else if(t<3.3)amp=1-0.06*Math.sin(2*Math.PI*0.6*(t-0.35));
+        else amp=Math.max(0,Math.pow(1-(t-3.3)/2.1,1.5));
+        var growl=0.93+0.07*Math.sin(2*Math.PI*6.5*t);      /* vibration de la membrane */
+        var v=0;
+        for(var k=0;k<part.length;k++){
+          var pt=part[k];
+          var vib=1+0.0025*Math.sin(2*Math.PI*(4.2+pt.v)*t);
+          ph[k]+=(pt.f*vib)/sr;
+          v+=Math.sin(2*Math.PI*ph[k])*pt.a;
+        }
+        v*=amp*growl*0.3;
+        /* souffle de l air comprime, surtout a l attaque */
+        airL=airL*0.9+rnd2()*0.1; airR=airR*0.9+rnd2()*0.1;
+        var blow=Math.exp(-t*1.6)*0.5+0.12;
+        var Dp=Math.floor(sr*0.009);                        /* ~9 ms : largeur stereo naturelle */
+        L[i]=sat(v+airL*0.05*blow*amp);
+        R[i]=sat((i>Dp?L[i-Dp]*0.93:v*0.5)+airR*0.055*blow*amp);
       }
     });
   }else if(kind==="eclat"){
@@ -4006,7 +4016,7 @@ function playSound(kind){
     var rev=null, gain=0.5;
     if(kind==="foudre"){rev=reverb(ctx,0.45,2.6,2.0);gain=0.55;}
     else if(kind==="vague"){rev=reverb(ctx,0.18,2.2,2.8);gain=0.6;}
-    else if(kind==="horsbord"){rev=reverb(ctx,0.16,1.1,2.8);gain=0.5;}
+    else if(kind==="paquebot"){rev=reverb(ctx,0.32,2.8,1.9);gain=0.5;}
     else if(kind==="moulinet"){rev=reverb(ctx,0.14,0.9,3.2);gain=0.6;}
     else if(kind==="pluie"){rev=reverb(ctx,0.16,1.4,2.4);gain=0.55;}
     else if(kind==="drone"){gain=0.45;}
@@ -4018,7 +4028,7 @@ function soundToggle(){
   try{localStorage.setItem("estran_snd",SND.on?"1":"0");}catch(e){}
   var b=$("#btnSnd");
   if(b){b.textContent=SND.on?"🔊":"🔇";b.title=SND.on?"Sons activés":"Sons coupés";}
-  if(SND.on)playSound("horsbord");
+  if(SND.on)playSound("paquebot");
   toast(SND.on?"Sons activés":"Sons coupés");
   if(MINI&&!MINIFOCUS){try{renderMini();}catch(e){}}
 }
