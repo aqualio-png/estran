@@ -662,7 +662,7 @@ html.car #modal.kbd #results{max-height:30vh}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v75</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v78</b></p>
     </div>
   </header>
 
@@ -857,7 +857,7 @@ html.car #modal.kbd #results{max-height:30vh}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v75</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v78</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -1385,8 +1385,8 @@ function pickHydroStation(list,la,lo){
   return best;
 }
 function soundFor(id){
-  var map={__mini:"blip", tideCard:"vague", surfCard:"vague", pecheCard:"plouf",
-    droneCard:"drone", dzoneCard:"drone", navCard:"cloche", condCard:"blip",
+  var map={__mini:"blip", tideCard:"vague", surfCard:"vague", pecheCard:"moulinet",
+    droneCard:"drone", dzoneCard:"drone", navCard:"horsbord", condCard:"blip",
     radarCard:"pluie", identSection:"photo", eclCard:"eclat", shareCard:"blip"};
   return map[id]||"blip";
 }
@@ -3686,105 +3686,318 @@ function audioCtx(){
     return SND.ctx;
   }catch(e){return null;}
 }
-function noiseBuf(ctx,dur){
-  var n=Math.max(1,Math.floor(ctx.sampleRate*dur));
-  var b=ctx.createBuffer(1,n,ctx.sampleRate), d=b.getChannelData(0);
-  for(var i=0;i<n;i++)d[i]=Math.random()*2-1;
+/* ---- synthese procedurale : le signal est calcule echantillon par echantillon ---- */
+function rnd2(){return Math.random()*2-1;}
+function sat(x){                     /* limitation douce : jamais de saturation ni de NaN */
+  if(!isFinite(x))return 0;
+  if(x>1.4)x=1.4; else if(x<-1.4)x=-1.4;
+  return x-(x*x*x)/6.2;
+}
+function svf(){                      /* filtre a variable d etat, stabilise (coupure et resonance bornees) */
+  return {lp:0,bp:0,run:function(x,f,q){
+    if(!isFinite(x))x=0;
+    f=Math.min(0.24,Math.max(0.00002,f));          /* bien sous la limite de stabilite */
+    q=Math.min(1.8,Math.max(0.5,q==null?1:q));
+    var fc=2*Math.sin(Math.PI*f);
+    this.lp+=fc*this.bp;
+    var hp=x-this.lp-q*this.bp;
+    this.bp+=fc*hp;
+    if(!isFinite(this.lp)||Math.abs(this.lp)>40)this.lp=0;
+    if(!isFinite(this.bp)||Math.abs(this.bp)>40)this.bp=0;
+    return {lp:this.lp,bp:this.bp,hp:hp};
+  }};
+}
+function makeIR(ctx,dur,decay){      /* reverberation : reponse impulsionnelle generee */
+  var n=Math.floor(ctx.sampleRate*dur), b=ctx.createBuffer(2,n,ctx.sampleRate);
+  for(var c=0;c<2;c++){
+    var d=b.getChannelData(c), lp=0;
+    for(var i=0;i<n;i++){
+      var e=Math.pow(1-i/n,decay);
+      lp=lp*0.72+rnd2()*0.28;
+      d[i]=lp*e*(i<40?i/40:1);
+    }
+  }
   return b;
 }
-function env(ctx,g,peak,attack,dur){
-  var t=ctx.currentTime;
-  g.gain.setValueAtTime(0.0001,t);
-  g.gain.exponentialRampToValueAtTime(peak,t+attack);
-  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+function reverb(ctx,mix,dur,decay){
+  var cv=ctx.createConvolver();cv.buffer=makeIR(ctx,dur||1.6,decay||2.4);
+  var wet=ctx.createGain();wet.gain.value=mix==null?0.3:mix;
+  cv.connect(wet);wet.connect(ctx.destination);
+  return cv;
+}
+function renderStereo(ctx,dur,fn){   /* remplit un tampon stereo via l algorithme fourni */
+  var sr=ctx.sampleRate, n=Math.floor(sr*dur), b=ctx.createBuffer(2,n,sr);
+  var L=b.getChannelData(0), R=b.getChannelData(1);
+  fn(L,R,n,sr);
+  return b;
+}
+function playBuf(ctx,buf,gain,rev){
+  var src=ctx.createBufferSource();src.buffer=buf;
+  var g=ctx.createGain();g.gain.value=gain==null?0.5:gain;
+  src.connect(g);g.connect(ctx.destination);
+  if(rev)g.connect(rev);
+  src.start(ctx.currentTime);
+  return src;
+}
+function bufFor(ctx,kind){
+  SND.cache=SND.cache||{};
+  if(SND.cache[kind])return SND.cache[kind];
+  var b=null, sr=ctx.sampleRate;
+  if(kind==="vague"){
+    /* houle : bruit brun module par un filtre passe-bande balaye, deferlement large bande, mousse granulaire */
+    b=renderStereo(ctx,4.6,function(L,R,n,sr){
+      var f1=svf(),f2=svf(),br=0,br2=0;
+      for(var i=0;i<n;i++){
+        var t=i/sr, p=t/4.6;
+        br=(br+0.018*rnd2())/1.018; br2=(br2+0.018*rnd2())/1.018;
+        var swell=Math.pow(Math.sin(Math.PI*Math.min(1,p*1.25)),1.6);         /* la vague enfle */
+        var cut=(160+1900*Math.pow(Math.max(0,(t-1.4)/1.6),1.4))/sr;          /* elle se leve */
+        var a=f1.run(br*6,Math.min(0.45,cut),0.9);
+        var bq=f2.run(br2*6,Math.min(0.45,cut*1.07),0.9);
+        var body=(a.lp*0.5+a.bp*0.7)*swell;
+        var bodyR=(bq.lp*0.5+bq.bp*0.7)*swell;
+        var brk=0;
+        if(t>1.55&&t<2.9){                                                     /* deferlement */
+          var e=Math.exp(-(t-1.55)*2.1);
+          brk=rnd2()*e*2.6;
+        }
+        var foam=0;
+        if(t>2.2){                                                             /* mousse : craquements */
+          var fe=Math.exp(-(t-2.2)*0.9);
+          if(Math.random()<0.28)foam=rnd2()*fe*0.5;
+        }
+        var env=Math.min(1,t/0.25)*Math.min(1,(4.6-t)/0.6);
+        L[i]=sat((body+brk*0.9+foam)*env*0.55);
+        R[i]=sat((bodyR+brk*0.86+foam*0.8)*env*0.55);
+      }
+    });
+  }else if(kind==="pluie"){
+    /* averse : nappe + gouttes individuelles, avec un coup de tonnerre et son grondement */
+    b=renderStereo(ctx,5.0,function(L,R,n,sr){
+      var hissL=0,hissR=0,drops=[],rum=svf(),br=0;
+      var tBoom=1.25;                                     /* instant de la detonation */
+      var tmp=new Float32Array(n);
+      for(var i=0;i<n;i++){
+        var t=i/sr;
+        hissL=hissL*0.86+rnd2()*0.14; hissR=hissR*0.86+rnd2()*0.14;
+        var intens=0.7+0.5*Math.min(1,Math.max(0,(t-tBoom)/1.2));   /* l averse force apres le coup */
+        if(Math.random()<0.05*intens){
+          drops.push({p:0,f:(900+Math.random()*4200)/sr,d:Math.exp(-1/(sr*(0.004+Math.random()*0.012))),
+                      a:0.25+Math.random()*0.55,pan:Math.random()});
+          if(drops.length>240)drops.shift();
+        }
+        var sL=0,sR=0;
+        for(var k=0;k<drops.length;k++){
+          var dr=drops[k];
+          dr.a*=dr.d;
+          if(dr.a<0.001)continue;
+          dr.p+=dr.f;
+          var v=Math.sin(2*Math.PI*dr.p)*dr.a;
+          sL+=v*(1-dr.pan); sR+=v*dr.pan;
+        }
+        /* tonnerre : claquement puis grondement */
+        var th=0;
+        if(t>=tBoom){
+          var dt=t-tBoom;
+          if(dt<0.45)th+=rnd2()*Math.exp(-dt*12)*2.4;
+          br=(br+0.02*rnd2())/1.02;
+          var g=rum.run(br*7,Math.min(0.24,(520*Math.exp(-dt*0.6))/sr),1.1);
+          th+=g.lp*(0.55+0.45*Math.sin(2*Math.PI*1.8*dt))*Math.exp(-dt*0.5)*0.9;
+        }
+        tmp[i]=th;
+        var env=Math.min(1,t/0.4)*Math.min(1,(5.0-t)/0.8);
+        L[i]=sat((sL*0.2+hissL*0.3*intens)*env);
+        R[i]=sat((sR*0.2+hissR*0.3*intens)*env);
+      }
+      /* echos du tonnerre ajoutes apres coup */
+      var ech=[{d:0.42,a:0.6},{d:1.05,a:0.4},{d:2.0,a:0.25}];
+      for(var j=0;j<n;j++){
+        var e=tmp[j];
+        for(var q=0;q<ech.length;q++){
+          var k2=j-Math.floor(ech[q].d*sr);
+          if(k2>0)e+=tmp[k2]*ech[q].a;
+        }
+        var ev=Math.min(1,(5.0-j/sr)/0.8);
+        L[j]=sat(L[j]+e*0.34*ev);
+        R[j]=sat(R[j]+e*0.31*ev);
+      }
+    });
+  }else if(kind==="foudre"){
+    /* tonnerre : claquement puis grondement avec reflexions multiples */
+    b=renderStereo(ctx,5.2,function(L,R,n,sr){
+      var f1=svf(),f2=svf(),br=0,br2=0;
+      var echos=[{d:0.35,a:0.7},{d:0.9,a:0.5},{d:1.7,a:0.34},{d:2.8,a:0.2}];
+      var tmp=new Float32Array(n);
+      for(var i=0;i<n;i++){
+        var t=i/sr;
+        br=(br+0.02*rnd2())/1.02;
+        var crack=(t<0.5)?rnd2()*Math.exp(-t*11)*2.6:0;
+        var cut=(560*Math.exp(-t*0.55))/sr;
+        var g=f1.run(br*7,Math.min(0.45,cut),1.1);
+        var roll=0.55+0.45*Math.sin(2*Math.PI*1.7*t+Math.sin(2*Math.PI*0.6*t));
+        tmp[i]=crack+g.lp*roll*Math.min(1,t*1.6)*Math.exp(-t*0.5)*0.75;
+      }
+      for(var j=0;j<n;j++){
+        var v=tmp[j], vR=tmp[j];
+        for(var e=0;e<echos.length;e++){
+          var k2=j-Math.floor(echos[e].d*sr);
+          if(k2>0){v+=tmp[k2]*echos[e].a*0.55;vR+=tmp[k2]*echos[e].a*0.48;}
+        }
+        br2=(br2+0.02*rnd2())/1.02;
+        var env=Math.min(1,(5.2-j/sr)/0.8);
+        L[j]=sat((v*0.42+br2*0.05)*env);
+        R[j]=sat((vR*0.42-br2*0.05)*env);
+      }
+    });
+  }else if(kind==="drone"){
+    /* demarrage multirotor : montee des 4 moteurs vers un regime aigu, sifflement des pales, stabilisation */
+    b=renderStereo(ctx,3.6,function(L,R,n,sr){
+      var mot=[{f0:34,f1:196,ph:0,w:0,pan:0.12},{f0:34,f1:206,ph:0,w:0,pan:0.88},
+               {f0:34,f1:214,ph:0,w:0,pan:0.32},{f0:34,f1:224,ph:0,w:0,pan:0.68}];
+      var whine=0, air=0;
+      for(var i=0;i<n;i++){
+        var t=i/sr;
+        var ramp=1-Math.exp(-t*2.4);                       /* acceleration des moteurs */
+        var hover=1+0.03*Math.sin(2*Math.PI*1.1*t);
+        var sL=0,sR=0,fcur=0;
+        for(var m=0;m<mot.length;m++){
+          var mo=mot[m];
+          mo.w+=(rnd2()*0.9-mo.w)*0.0007;
+          var f=((mo.f0+(mo.f1-mo.f0)*ramp)*hover+mo.w)/sr;
+          fcur=f*sr;
+          mo.ph+=f;
+          var ph=mo.ph;
+          var v=Math.sin(2*Math.PI*ph)*0.42
+               +Math.sin(4*Math.PI*ph)*0.30
+               +Math.sin(6*Math.PI*ph)*0.20
+               +Math.sin(8*Math.PI*ph)*0.13
+               +Math.sin(12*Math.PI*ph)*0.07;            /* harmoniques hautes = son aigu */
+          v*=0.78+0.22*Math.sin(2*Math.PI*ph*2);          /* passage de pales */
+          sL+=v*(1-mo.pan); sR+=v*mo.pan;
+        }
+        whine+=2*Math.PI*(fcur*9.5)/sr;                    /* sifflement aigu proportionnel au regime */
+        var wv=Math.sin(whine)*0.05*ramp;
+        air=air*0.87+rnd2()*0.13;
+        var env=Math.min(1,t/0.12)*Math.min(1,(3.6-t)/0.45);
+        L[i]=sat((sL*0.12+wv+air*0.085*ramp)*env);
+        R[i]=sat((sR*0.12+wv*0.9+air*0.08*ramp)*env);
+      }
+    });
+  }else if(kind==="moulinet"){
+    /* fil qui file : cliquet du frein (train de clics ralentissant), rotation du tambour, sifflement du fil */
+    b=renderStereo(ctx,3.0,function(L,R,n,sr){
+      var clicks=[], next=0.015, spool=0, hiss=0;
+      for(var i=0;i<n;i++){
+        var t=i/sr, v=0;
+        var rate=7+52*Math.exp(-t*0.95);              /* depart fulgurant puis le poisson fatigue */
+        if(t>=next){
+          clicks.push({t:t,f:1150+Math.random()*1700,a:0.45+Math.random()*0.35});
+          if(clicks.length>40)clicks.shift();
+          next=t+(1/rate)*(0.82+0.36*Math.random());
+        }
+        for(var k=0;k<clicks.length;k++){
+          var c=clicks[k], dt=t-c.t;
+          if(dt<0||dt>0.03)continue;
+          v+=Math.sin(2*Math.PI*c.f*dt)*Math.exp(-dt*230)*c.a
+             +Math.sin(2*Math.PI*c.f*0.5*dt)*Math.exp(-dt*150)*c.a*0.4;
+        }
+        spool+=(rate*4.2)/sr;                          /* ronflement du tambour, lie a la vitesse */
+        v+=Math.sin(2*Math.PI*spool)*0.09*Math.exp(-t*0.5);
+        hiss=hiss*0.82+rnd2()*0.18;
+        v+=hiss*0.055*Math.exp(-t*0.55);               /* le fil qui siffle dans les anneaux */
+        var env=Math.min(1,t/0.01)*Math.min(1,(3.0-t)/0.5);
+        var Dm=Math.floor(sr*0.0018);
+        L[i]=sat(v*env*0.62);
+        R[i]=sat((i>Dm?L[i-Dm]*0.9:0)+hiss*0.012*env);
+      }
+    });
+  }else if(kind==="voiture"){
+    /* moteur 4 cylindres : train d impulsions filtre + roulement des pneus */
+    b=renderStereo(ctx,3.0,function(L,R,n,sr){
+      var f=svf(),ph=0,road=0,roadL=0;
+      for(var i=0;i<n;i++){
+        var t=i/sr;
+        var rpm=(820+900*Math.min(1,t/1.3)-160*Math.max(0,(t-2)/1))/60;   /* montee puis palier */
+        var fire=rpm*2;                                                    /* 4 cylindres, 4 temps */
+        ph+=fire/sr;
+        var pulse=Math.pow(Math.max(0,Math.sin(2*Math.PI*ph)),8)*2-0.15;   /* explosions */
+        var g=f.run(pulse,Math.min(0.45,(420+220*Math.sin(2*Math.PI*0.4*t))/sr),0.7);
+        road=road*0.94+rnd2()*0.06; roadL=roadL*0.9+rnd2()*0.1;
+        var env=Math.min(1,t/0.3)*Math.min(1,(3.0-t)/0.5);
+        var Dv=Math.floor(sr*0.0016);
+        L[i]=sat((g.lp*0.5+road*0.16+roadL*0.05)*env);
+        R[i]=sat((i>Dv?L[i-Dv]*0.93:0)-roadL*0.06*env);
+      }
+    });
+  }else if(kind==="horsbord"){
+    /* moteur hors-bord deux temps : impulsions d allumage aigues, remous d helice, cavitation */
+    b=renderStereo(ctx,3.4,function(L,R,n,sr){
+      var f1=svf(), ph=0, wash=0, washR=0;
+      for(var i=0;i<n;i++){
+        var t=i/sr;
+        var fire=(62+78*(1-Math.exp(-t*1.7))+3*Math.sin(2*Math.PI*0.8*t));  /* montee en regime */
+        ph+=fire/sr;
+        var pulse=Math.pow(Math.max(0,Math.sin(2*Math.PI*ph)),14)*2.2-0.2;  /* claquement deux temps */
+        var g=f1.run(pulse,Math.min(0.24,(1500+700*Math.sin(2*Math.PI*0.5*t))/sr),1.5);
+        var v=g.lp*0.55+g.bp*0.25;
+        v+=Math.sin(2*Math.PI*ph*2)*0.08+Math.sin(2*Math.PI*ph*3)*0.05;     /* harmoniques aigues */
+        wash=wash*0.93+rnd2()*0.07; washR=washR*0.93+rnd2()*0.07;
+        var wmod=0.5+0.5*Math.sin(2*Math.PI*fire/6*t);                      /* remous rythme par l helice */
+        v+=wash*0.14*wmod;
+        if(Math.random()<0.004)v+=rnd2()*0.25;                              /* cavitation */
+        var env=Math.min(1,t/0.25)*Math.min(1,(3.4-t)/0.5);
+        var Dh=Math.floor(sr*0.0026);
+        L[i]=sat(v*env*0.5);
+        R[i]=sat((i>Dh?L[i-Dh]*0.9:0)+(washR*0.06-wash*0.03)*env);
+      }
+    });
+  }else if(kind==="eclat"){
+    b=renderStereo(ctx,2.4,function(L,R,n,sr){
+      for(var i=0;i<n;i++){
+        var t=i/sr, v=0;
+        [1568,1975,2349,3136].forEach(function(f,k){
+          v+=Math.sin(2*Math.PI*f*(1+0.004*Math.sin(2*Math.PI*(4+k)*t))*t)*(0.22/(k+1));
+        });
+        var env=Math.min(1,t/0.5)*Math.min(1,(2.4-t)/1.1);
+        L[i]=sat(v*env); R[i]=sat(v*env*0.94);
+      }
+    });
+  }else if(kind==="photo"){
+    b=renderStereo(ctx,0.42,function(L,R,n,sr){
+      for(var i=0;i<n;i++){
+        var t=i/sr, v=0;
+        if(t<0.02)v+=rnd2()*Math.exp(-t*160)*1.1;
+        if(t>0.09&&t<0.15)v+=rnd2()*Math.exp(-(t-0.09)*90)*0.8;
+        if(t>0.16)v+=rnd2()*Math.exp(-(t-0.16)*40)*0.3;
+        L[i]=sat(v*0.5);R[i]=sat(v*0.48);
+      }
+    });
+  }else{
+    b=renderStereo(ctx,0.22,function(L,R,n,sr){
+      for(var i=0;i<n;i++){
+        var t=i/sr;
+        var v=Math.sin(2*Math.PI*(660+300*t/0.22)*t)*Math.exp(-t*14);
+        L[i]=sat(v*0.3);R[i]=sat(v*0.3);
+      }
+    });
+  }
+  SND.cache[kind]=b;
+  return b;
 }
 function playSound(kind){
   if(!SND.on)return;
   var ctx=audioCtx();if(!ctx)return;
-  var t=ctx.currentTime, g=ctx.createGain(); g.connect(ctx.destination);
   try{
-    if(kind==="drone"){
-      var o1=ctx.createOscillator(),o2=ctx.createOscillator(),lp=ctx.createBiquadFilter();
-      o1.type="sawtooth";o2.type="sawtooth";
-      o1.frequency.setValueAtTime(112,t);o2.frequency.setValueAtTime(117,t);
-      var lfo=ctx.createOscillator(),lg=ctx.createGain();
-      lfo.frequency.setValueAtTime(28,t);lg.gain.setValueAtTime(9,t);
-      lfo.connect(lg);lg.connect(o1.frequency);lg.connect(o2.frequency);
-      lp.type="lowpass";lp.frequency.setValueAtTime(900,t);
-      o1.connect(lp);o2.connect(lp);lp.connect(g);
-      env(ctx,g,0.16,0.04,0.34);
-      o1.start(t);o2.start(t);lfo.start(t);
-      o1.stop(t+0.36);o2.stop(t+0.36);lfo.stop(t+0.36);
-    }else if(kind==="pluie"){
-      var src=ctx.createBufferSource();src.buffer=noiseBuf(ctx,0.3);
-      var bp=ctx.createBiquadFilter();bp.type="bandpass";
-      bp.frequency.setValueAtTime(4200,t);bp.Q.setValueAtTime(0.8,t);
-      src.connect(bp);bp.connect(g);
-      env(ctx,g,0.14,0.02,0.28);
-      src.start(t);src.stop(t+0.3);
-    }else if(kind==="vague"){
-      var sv=ctx.createBufferSource();sv.buffer=noiseBuf(ctx,0.45);
-      var lp2=ctx.createBiquadFilter();lp2.type="lowpass";
-      lp2.frequency.setValueAtTime(380,t);
-      lp2.frequency.exponentialRampToValueAtTime(1500,t+0.18);
-      lp2.frequency.exponentialRampToValueAtTime(260,t+0.42);
-      sv.connect(lp2);lp2.connect(g);
-      env(ctx,g,0.2,0.12,0.42);
-      sv.start(t);sv.stop(t+0.45);
-    }else if(kind==="plouf"){
-      var os=ctx.createOscillator();os.type="sine";
-      os.frequency.setValueAtTime(620,t);
-      os.frequency.exponentialRampToValueAtTime(130,t+0.16);
-      var sp=ctx.createBufferSource();sp.buffer=noiseBuf(ctx,0.12);
-      var hp=ctx.createBiquadFilter();hp.type="highpass";hp.frequency.setValueAtTime(2200,t);
-      var g2=ctx.createGain();g2.gain.setValueAtTime(0.08,t);
-      g2.gain.exponentialRampToValueAtTime(0.0001,t+0.12);
-      os.connect(g);sp.connect(hp);hp.connect(g2);g2.connect(ctx.destination);
-      env(ctx,g,0.18,0.01,0.22);
-      os.start(t);os.stop(t+0.24);sp.start(t);sp.stop(t+0.12);
-    }else if(kind==="foudre"){
-      var sf=ctx.createBufferSource();sf.buffer=noiseBuf(ctx,0.4);
-      var lf=ctx.createBiquadFilter();lf.type="lowpass";
-      lf.frequency.setValueAtTime(3000,t);
-      lf.frequency.exponentialRampToValueAtTime(160,t+0.38);
-      sf.connect(lf);lf.connect(g);
-      env(ctx,g,0.24,0.006,0.4);
-      sf.start(t);sf.stop(t+0.4);
-    }else if(kind==="voiture"){
-      var ov=ctx.createOscillator();ov.type="sawtooth";
-      ov.frequency.setValueAtTime(72,t);
-      ov.frequency.linearRampToValueAtTime(96,t+0.26);
-      var lv=ctx.createBiquadFilter();lv.type="lowpass";lv.frequency.setValueAtTime(420,t);
-      ov.connect(lv);lv.connect(g);
-      env(ctx,g,0.15,0.05,0.3);
-      ov.start(t);ov.stop(t+0.32);
-    }else if(kind==="cloche"){
-      var c1=ctx.createOscillator(),c2=ctx.createOscillator();
-      c1.type="sine";c2.type="sine";
-      c1.frequency.setValueAtTime(880,t);c2.frequency.setValueAtTime(1320,t);
-      c1.connect(g);c2.connect(g);
-      env(ctx,g,0.13,0.008,0.3);
-      c1.start(t);c2.start(t);c1.stop(t+0.32);c2.stop(t+0.32);
-    }else if(kind==="photo"){
-      var p1=ctx.createBufferSource();p1.buffer=noiseBuf(ctx,0.05);
-      var pf=ctx.createBiquadFilter();pf.type="highpass";pf.frequency.setValueAtTime(1800,t);
-      p1.connect(pf);pf.connect(g);
-      env(ctx,g,0.16,0.004,0.06);
-      p1.start(t);p1.stop(t+0.06);
-    }else if(kind==="eclat"){
-      var oe=ctx.createOscillator();oe.type="triangle";
-      oe.frequency.setValueAtTime(1600,t);
-      oe.frequency.exponentialRampToValueAtTime(2600,t+0.18);
-      oe.connect(g);
-      env(ctx,g,0.1,0.01,0.26);
-      oe.start(t);oe.stop(t+0.28);
-    }else{
-      var ob=ctx.createOscillator();ob.type="sine";
-      ob.frequency.setValueAtTime(660,t);
-      ob.connect(g);
-      env(ctx,g,0.09,0.005,0.12);
-      ob.start(t);ob.stop(t+0.14);
-    }
+    var b=bufFor(ctx,kind);
+    if(!b)return;
+    var rev=null, gain=0.5;
+    if(kind==="foudre"){rev=reverb(ctx,0.45,2.6,2.0);gain=0.55;}
+    else if(kind==="vague"){rev=reverb(ctx,0.22,1.6,2.6);gain=0.55;}
+    else if(kind==="horsbord"){rev=reverb(ctx,0.16,1.1,2.8);gain=0.5;}
+    else if(kind==="moulinet"){rev=reverb(ctx,0.14,0.9,3.2);gain=0.6;}
+    else if(kind==="pluie"){rev=reverb(ctx,0.3,2.2,2.2);gain=0.5;}
+    else if(kind==="drone"){gain=0.45;}
+    playBuf(ctx,b,gain,rev);
   }catch(e){}
 }
 function soundToggle(){
@@ -3792,7 +4005,7 @@ function soundToggle(){
   try{localStorage.setItem("estran_snd",SND.on?"1":"0");}catch(e){}
   var b=$("#btnSnd");
   if(b){b.textContent=SND.on?"🔊":"🔇";b.title=SND.on?"Sons activés":"Sons coupés";}
-  if(SND.on)playSound("cloche");
+  if(SND.on)playSound("horsbord");
   toast(SND.on?"Sons activés":"Sons coupés");
   if(MINI&&!MINIFOCUS){try{renderMini();}catch(e){}}
 }
