@@ -316,6 +316,18 @@ table.tides tr:first-child td{border-top:none}
 .navwater .wsub{color:var(--mist); font-size:12px; font-family:"Spline Sans Mono",monospace}
 .navwater .wup{color:var(--ok); font-weight:700}
 .navwater .wdown{color:var(--peche); font-weight:700}
+.navwater .hyspark{display:block; width:100%; height:86px; margin:8px 0 2px}
+.navwater .hyspark .hyl{fill:none; stroke:var(--surf); stroke-width:2; vector-effect:non-scaling-stroke}
+.navwater .hyspark .hya{fill:var(--surf); opacity:.12}
+.navwater .hyspark .hyg{stroke:var(--line); stroke-width:1; vector-effect:non-scaling-stroke}
+.navwater .hyspark text{fill:var(--mist); font-family:"Spline Sans Mono",monospace; font-size:9px}
+.navwater .hyttl{color:var(--mist); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; margin:10px 0 5px}
+.navwater .hyrow{display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-top:1px solid var(--line); font-size:12.5px}
+.navwater .hyrow:first-of-type{border-top:0}
+.navwater .hyrow .hyn{min-width:0}
+.navwater .hyrow .hyv{flex:none; text-align:right; font-family:"Spline Sans Mono",monospace; font-size:12px}
+.navwater .hypos{display:inline-block; font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:1px 6px; border-radius:6px; margin-right:5px; background:var(--track); color:var(--foam)}
+.navwater .hypos.dam{background:var(--peche); color:var(--deep)}
 .navloc{
   margin-top:7px; background:var(--panel2); border:1px solid var(--line); color:var(--foam);
   border-radius:10px; padding:7px 12px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;
@@ -662,7 +674,7 @@ html.car #modal.kbd #results{max-height:30vh}
   <header>
     <div class="brand">
       <h1>ESTR<span>AN</span></h1>
-      <p>marées · surf · pêche · drone — <b id="appVer">v84</b></p>
+      <p>marées · surf · pêche · drone — <b id="appVer">v85</b></p>
     </div>
   </header>
 
@@ -857,7 +869,7 @@ html.car #modal.kbd #results{max-height:30vh}
       Hauteurs relatives au <b>niveau moyen</b> de la mer (modèle océanique Copernicus via Open-Meteo, maille ≈ 8 km). Air, vent, ciel : Météo-France AROME/ARPEGE à ta position (Open-Meteo). Eau (aujourd'hui) : analyse satellite NASA/JPL MUR 1 km (NOAA ERDDAP) au pixel de mer le plus proche — mesure nocturne de fondation, publiée avec ~1 jour de décalage, donc plus fraîche que l'eau de surface un après-midi d'été ; en secours et pour J+1 à J+4 : modèle Copernicus Marine. La date de l'analyse est affichée sur la tuile. UV : Copernicus CAMS. Radar : RainViewer. Phase lunaire calculée localement (élongation Lune-Soleil, précision ~4 h). Les orages localisés restent difficiles à prévoir : fie-toi au radar et au ciel.
       Sans calage, hauteurs relatives au niveau moyen ; après saisie des hauteurs officielles, l app applique une transformation (échelle + décalage) qui les ramène au zéro hydrographique SHOM. Heures PM/BM issues du modèle océanique (précision typique ±15–30 min selon la configuration côtière) ; coefficients <b>estimés</b> à partir du marnage local (écart possible ±10 vs officiel). Référence officielle : SHOM — boutons de comparaison sous le tableau des marées.
       Zones drones : carte DGAC/IGN «&nbsp;restrictions drones de loisir&nbsp;» (0–120&nbsp;m), hors interdictions temporaires (SIA).
-      Estran <b>v84</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
+      Estran <b>v85</b> · Heures locales du téléphone, format 24&nbsp;h. Indicatif uniquement — ne pas utiliser pour la navigation.
     </footer>
   </div>
 </div>
@@ -1383,6 +1395,58 @@ function pickHydroStation(list,la,lo){
       river:st.libelle_cours_eau||"",dist:d,la:sla,lo:slo};}
   }
   return best;
+}
+function hydroIsDam(name){
+  return /barrage|retenue|amont|aval|\bbge\b|écluse|ecluse|usine/i.test(name||"");
+}
+function hydroNear(list,main,la,lo){        /* stations voisines : meme cours d eau d abord (amont/aval) */
+  if(!main||!list)return [];
+  var same=[],other=[],seen={};
+  seen[main.code]=1;
+  for(var i=0;i<list.length;i++){
+    var st=list[i];
+    if(st.en_service===false||!st.code_station||seen[st.code_station])continue;
+    var sla=(st.latitude_station!=null)?st.latitude_station:st.latitude;
+    var slo=(st.longitude_station!=null)?st.longitude_station:st.longitude;
+    if(sla==null||slo==null)continue;
+    seen[st.code_station]=1;
+    var o={code:st.code_station,name:st.libelle_station||st.libelle_site||"Station",
+      river:st.libelle_cours_eau||"",dist:distKm(la,lo,sla,slo),la:sla,lo:slo};
+    var sameRiver=main.river&&o.river&&o.river===main.river;
+    /* codification Sandre : le code croit de l amont vers l aval sur un meme cours d eau */
+    o.pos=sameRiver?(o.code<main.code?"amont":"aval"):"";
+    o.dam=hydroIsDam(o.name);
+    (sameRiver?same:other).push(o);
+  }
+  var byD=function(a,b){return a.dist-b.dist;};
+  same.sort(byD);other.sort(byD);
+  var out=same.slice(0,4);
+  if(out.length<2)out=out.concat(other.slice(0,3-out.length));
+  return out;
+}
+function hydroSpark(series){                /* courbe de hauteur sur 48 h, SVG en ligne */
+  if(!series||series.length<3)return "";
+  var t0=series[0].t.getTime(), t1=series[series.length-1].t.getTime();
+  if(t1-t0<3600000)return "";
+  var mn=Infinity,mx=-Infinity,i;
+  for(i=0;i<series.length;i++){if(series[i].h<mn)mn=series[i].h;if(series[i].h>mx)mx=series[i].h;}
+  if(mx-mn<0.04){var c=(mx+mn)/2;mn=c-0.02;mx=c+0.02;}
+  var W=300,H=70,pt=8,pb=14,pl=2,pr=40;
+  var X=function(t){return pl+(t-t0)/(t1-t0)*(W-pl-pr);};
+  var Y=function(h){return pt+(mx-h)/(mx-mn)*(H-pt-pb);};
+  var step=Math.max(1,Math.floor(series.length/150)), d="";
+  for(i=0;i<series.length;i+=step){d+=(d?"L":"M")+X(series[i].t.getTime()).toFixed(1)+" "+Y(series[i].h).toFixed(1);}
+  var last=series[series.length-1];
+  d+="L"+X(t1).toFixed(1)+" "+Y(last.h).toFixed(1);
+  var area=d+"L"+X(t1).toFixed(1)+" "+(H-pb)+"L"+X(t0).toFixed(1)+" "+(H-pb)+"Z";
+  var hrs=Math.round((t1-t0)/3600000);
+  return "<svg class='hyspark' viewBox='0 0 "+W+" "+H+"' preserveAspectRatio='none'>"
+    +"<line class='hyg' x1='"+pl+"' y1='"+(H-pb)+"' x2='"+(W-pr)+"' y2='"+(H-pb)+"'/>"
+    +"<path class='hya' d='"+area+"'/><path class='hyl' d='"+d+"'/>"
+    +"<text x='"+(W-pr+4)+"' y='"+(pt+4)+"'>"+frNum(mx,2)+" m</text>"
+    +"<text x='"+(W-pr+4)+"' y='"+(H-pb)+"'>"+frNum(mn,2)+" m</text>"
+    +"<text x='"+pl+"' y='"+(H-2)+"'>−"+hrs+" h</text>"
+    +"<text x='"+(W-pr)+"' y='"+(H-2)+"' text-anchor='end'>maintenant</text></svg>";
 }
 function soundFor(id){
   var map={__mini:"blip", tideCard:"vague", surfCard:"vague", pecheCard:"moulinet",
@@ -3292,22 +3356,35 @@ function hydroFetch(la,lo,cb){
   fetch(su).then(function(r){return r.json();}).then(function(j){
     var st=pickHydroStation((j&&j.data)||[],la,lo);
     if(!st){HYDRO.busy=false;HYDRO.at=Date.now();HYDRO.data=null;HYDRO.err="aucune station";safe();return;}
-    var ou="https://hubeau.eaufrance.fr/api/v2/hydrometrie/observations_tr?code_entite="+encodeURIComponent(st.code)
-      +"&grandeur_hydro=H,Q&size=300&format=json";
+    var near=hydroNear((j&&j.data)||[],st,la,lo);
+    var codes=[st.code].concat(near.map(function(n){return n.code;}));
+    var since=new Date(Date.now()-48*3600000).toISOString().slice(0,19);
+    var ou="https://hubeau.eaufrance.fr/api/v2/hydrometrie/observations_tr?code_entite="+encodeURIComponent(codes.join(","))
+      +"&grandeur_hydro=H,Q&date_debut_obs="+since+"&size=20000&format=json";
     return fetch(ou).then(function(r){return r.json();}).then(function(o){
       var rows=(o&&o.data)||[];
-      var hs=[],qs=[];
+      var per={};
       for(var i=0;i<rows.length;i++){
         var rw=rows[i];
         var t=parseLocal(String(rw.date_obs).replace("Z","").replace(" ","T"));
         if(!t||isNaN(t.getTime()))continue;
-        if(rw.grandeur_hydro==="H"){var hv=hydroMeters(rw.resultat_obs);if(hv!=null)hs.push({t:t,h:hv});}
-        else if(rw.grandeur_hydro==="Q"){var qv=hydroFlow(rw.resultat_obs);if(qv!=null)qs.push({t:t,h:qv});}
+        var cs=rw.code_station||rw.code_entite||st.code;
+        var bk=per[cs]||(per[cs]={hs:[],qs:[]});
+        if(rw.grandeur_hydro==="H"){var hv=hydroMeters(rw.resultat_obs);if(hv!=null)bk.hs.push({t:t,h:hv});}
+        else if(rw.grandeur_hydro==="Q"){var qv=hydroFlow(rw.resultat_obs);if(qv!=null)bk.qs.push({t:t,h:qv});}
       }
-      hs.sort(function(a,b){return a.t-b.t;});
-      qs.sort(function(a,b){return a.t-b.t;});
+      var bySort=function(a,b){return a.t-b.t;};
+      for(var k in per){per[k].hs.sort(bySort);per[k].qs.sort(bySort);}
+      var mb=per[st.code]||{hs:[],qs:[]}, hs=mb.hs, qs=mb.qs;
+      for(var n2=0;n2<near.length;n2++){
+        var nb=per[near[n2].code]||{hs:[],qs:[]};
+        near[n2].h=nb.hs.length?nb.hs[nb.hs.length-1]:null;
+        near[n2].q=nb.qs.length?nb.qs[nb.qs.length-1]:null;
+        near[n2].trend=hydroTrend(nb.hs);
+      }
+      st.dam=hydroIsDam(st.name);
       HYDRO.data={st:st,h:hs.length?hs[hs.length-1]:null,q:qs.length?qs[qs.length-1]:null,
-        trend:hydroTrend(hs),n:hs.length};
+        trend:hydroTrend(hs),n:hs.length,series:hs,near:near};
       HYDRO.busy=false;HYDRO.at=Date.now();
       safe();
     });
@@ -3532,7 +3609,7 @@ function navSave(){
   }catch(e){}
   navSaveMode();
 }
-var NAVMAP={map:null,me:null,st:null,line:null};
+var NAVMAP={map:null,me:null,st:null,line:null,near:[]};
 function renderNavMap(){
   if(!window.L||state.la==null)return;
   var el=document.getElementById("navMap");if(!el)return;
@@ -3547,6 +3624,8 @@ function renderNavMap(){
   ["me","st","line"].forEach(function(k){
     if(NAVMAP[k]){try{NAVMAP.map.removeLayer(NAVMAP[k]);}catch(e){}NAVMAP[k]=null;}
   });
+  (NAVMAP.near||[]).forEach(function(m){try{NAVMAP.map.removeLayer(m);}catch(e){}});
+  NAVMAP.near=[];
   NAVMAP.me=L.circleMarker([state.la,state.lo],
     {radius:7,color:MC.now,weight:2,fillColor:MC.curve,fillOpacity:1})
     .addTo(NAVMAP.map).bindPopup((state.label||"Ma position")+"<br>"+frNum(state.la,4)+", "+frNum(state.lo,4));
@@ -3560,7 +3639,16 @@ function renderNavMap(){
       .addTo(NAVMAP.map).bindPopup(txt);
     NAVMAP.line=L.polyline([[state.la,state.lo],[d.st.la,d.st.lo]],
       {color:"#5BA8C9",weight:2,opacity:.85,dashArray:"5 6"}).addTo(NAVMAP.map);
-    try{NAVMAP.map.fitBounds([[state.la,state.lo],[d.st.la,d.st.lo]],{padding:[34,34],maxZoom:12});}catch(e){}
+    var bnds=[[state.la,state.lo],[d.st.la,d.st.lo]];
+    (d.near||[]).forEach(function(n){
+      if(n.la==null)return;
+      var pt=n.name+(n.pos?" ("+n.pos+")":"")+(n.river?"<br>"+n.river:"")+(n.h?"<br>"+frNum(n.h.h,2)+" m à "+fmtHM(n.h.t):"");
+      NAVMAP.near.push(L.circleMarker([n.la,n.lo],
+        {radius:5,color:"#FFFFFF",weight:1.5,fillColor:n.dam?"#E7A94E":"#89A9B6",fillOpacity:1})
+        .addTo(NAVMAP.map).bindPopup(pt));
+      if(n.pos)bnds.push([n.la,n.lo]);
+    });
+    try{NAVMAP.map.fitBounds(bnds,{padding:[34,34],maxZoom:12});}catch(e){}
   }else{
     try{NAVMAP.map.setView([state.la,state.lo],mode==="mer"?12:11);}catch(e){}
   }
@@ -3601,7 +3689,27 @@ function renderWater(mode){
     +"<div class='wsub'>"+stLink+(d.st.river?" · "+d.st.river:"")+" · à "+frNum(d.st.dist,0)+" km"
     +(h?" · relevé de "+fmtHM(h.t):"")+"</div>"
     +(q?"<div class='wsub'>débit "+frNum(q.h,1)+" m³/s</div>":"")
-    +"<div class='wsub'>Cote à l échelle de la station, pas une profondeur navigable : compare-la aux consignes du gestionnaire.</div>";
+    +hydroSpark(d.series)
+    +hydroNearHtml(d.near)
+    +"<div class='wsub'>Cote à l échelle de chaque station, pas une profondeur navigable : compare-la aux consignes du gestionnaire.</div>";
+}
+function hydroNearHtml(near){
+  if(!near||!near.length)return "";
+  var h="<div class='hyttl'>Stations voisines</div>", anyDam=false;
+  for(var i=0;i<near.length;i++){
+    var n=near[i];
+    if(n.dam)anyDam=true;
+    var tr=n.trend?(" "+(n.trend.dcm>=0?"+":"−")+frNum(Math.abs(n.trend.dcm),0)+" cm"):"";
+    h+="<div class='hyrow'><span class='hyn'>"
+      +(n.pos?"<span class='hypos"+(n.dam?" dam":"")+"'>"+n.pos+"</span>":(n.dam?"<span class='hypos dam'>ouvrage</span>":""))
+      +"<a href='https://www.hydro.eaufrance.fr/stationhydro/"+encodeURIComponent(n.code)+"/series' target='_blank' rel='noopener'>"+n.name+"</a>"
+      +(n.pos?"":(n.river?" · "+n.river:""))+" · "+frNum(n.dist,0)+" km</span>"
+      +"<span class='hyv'>"+(n.h?frNum(n.h.h,2)+" m"+tr:(n.q?frNum(n.q.h,1)+" m³/s":"—"))+"</span></div>";
+  }
+  h+="<div class='wsub' style='margin-top:4px'>Amont / aval d après la codification officielle des stations (Sandre)."
+    +(anyDam?" Les stations nommées barrage, retenue ou usine encadrent un ouvrage : l écart de cote entre amont et aval reflète la gestion de l ouvrage.":"")
+    +"</div>";
+  return h;
 }
 
 function renderNav(){
@@ -3673,7 +3781,15 @@ function renderNav(){
     }
     if(mode!=="mer"){
       info+="<a class='cmp' target='_blank' rel='noopener' href='https://www.vnf.fr/vnf/services/peage-plaisance-tarifs/'>Tarifs VNF officiels</a>";
-      info+="<a class='cmp' target='_blank' rel='noopener' href='https://www.vigicrues.gouv.fr'>Vigilance crues</a>";
+      var vd=(HYDRO.data&&HYDRO.data.st)?HYDRO.data:null;
+      if(vd){
+        var sec=(vd.near||[]).filter(function(n){return n.pos;}).map(function(n){return n.code;});
+        info+="<a class='cmp' target='_blank' rel='noopener' href='https://www.vigicrues.gouv.fr/station/"
+          +encodeURIComponent(vd.st.code)+"/H/7"+(sec.length?"?CdStationsSecondaires="+sec.map(encodeURIComponent).join(";"):"")
+          +"'>Station sur Vigicrues"+(sec.length?" (+ amont/aval)":"")+"</a>";
+      }else{
+        info+="<a class='cmp' target='_blank' rel='noopener' href='https://www.vigicrues.gouv.fr'>Vigilance crues</a>";
+      }
       info+="<a class='cmp' target='_blank' rel='noopener' href='https://www.riverapp.net/'>🌊 RiverApp — Niveaux et débits</a>";
       var hs=(HYDRO.data&&HYDRO.data.st)?HYDRO.data.st:null;
       info+=hs
