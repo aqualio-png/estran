@@ -3732,7 +3732,7 @@ function renderNav(){
     else if(state.acc!=null&&state.acc<=3000)src="position réseau ± "+Math.round(state.acc)+" m";
     else if(state.acc!=null)src="position réseau ± "+Math.round(state.acc/1000)+" km";
     else src="spot choisi";
-    sp.innerHTML="📍 <b>"+nm+"</b> <span class='navgps'>"+src+"</span>"
+    sp.innerHTML="📍 <b>"+escH(nm)+"</b> <span class='navgps'>"+src+"</span>"
       +(state.la!=null?"<br><span class='navgps'>"+frNum(state.la,4)+", "+frNum(state.lo,4)
         +" · "+(mode==="mer"?"régime maritime":"eaux intérieures")+" ("+auto+")</span>":"")
       +"<br><button class='navloc' id='navGps'>◎ Recentrer sur ma position GPS</button>";
@@ -4723,7 +4723,19 @@ function gpsHardFail(silent,why){
   $("#errMsg").textContent=why+" Tu peux aussi chercher un spot manuellement.";
   show("#err");
 }
+/* Échappe le texte venu de l'extérieur avant de l'afficher en HTML */
+function escH(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
+/* Demande l'accord avant d'envoyer l'adresse IP à ipwho.is / ipapi.co ; la réponse est mémorisée */
+function ipConsent(silent){
+  var v=null;try{v=localStorage.getItem("estran_ip_ok");}catch(e){}
+  if(v==="1")return true;
+  if(v==="0"||silent)return false;
+  var ok=window.confirm("GPS indisponible. Estimer ta position à partir de ton adresse IP ?\n(ton adresse IP sera envoyée au service ipwho.is ou ipapi.co)");
+  try{localStorage.setItem("estran_ip_ok",ok?"1":"0");}catch(e){}
+  return ok;
+}
 function locIP(silent,why){
+  if(!ipConsent(silent)){gpsHardFail(silent,"Position GPS indisponible.");return;}
   if(!silent){show("#loading");if(why)toast(why);}
   fetch("https://ipwho.is/").then(function(r){return r.json();}).then(function(j){
     if(j&&j.success!==false&&j.latitude!=null){
@@ -4800,7 +4812,7 @@ function doSearch(q){
       list.forEach(function(p){
         var d=document.createElement("div");
         d.className="rline";
-        d.innerHTML=p.name+"<small>"+[p.admin1,p.country].filter(Boolean).join(", ")+"</small>";
+        d.innerHTML=escH(p.name)+"<small>"+escH([p.admin1,p.country].filter(Boolean).join(", "))+"</small>";
         d.addEventListener("click",function(){
           $("#modal").classList.remove("open");
           fetchAll(p.latitude,p.longitude,p.name,false);
